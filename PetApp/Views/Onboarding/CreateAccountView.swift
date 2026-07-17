@@ -274,17 +274,21 @@ private struct CompanionStep: View {
                     .font(.title3)
                     .foregroundStyle(AppColor.textSecondary)
             }
+            .padding(.horizontal, Spacing.lg)
 
-            LazyVGrid(columns: columns, spacing: Spacing.md) {
-                ForEach(Companion.allCases) { companion in
-                    CompanionCard(companion: companion,
-                                  isSelected: selection == companion) {
-                        selection = companion
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: Spacing.md) {
+                    ForEach(Companion.allCases) { companion in
+                        CompanionCard(companion: companion,
+                                      isSelected: selection == companion) {
+                            selection = companion
+                        }
                     }
                 }
+                .padding(.horizontal, Spacing.lg)
+                .padding(.bottom, Spacing.md)
             }
         }
-        .padding(.horizontal, Spacing.lg)
     }
 }
 
@@ -297,14 +301,17 @@ private struct CompanionCard: View {
         Button(action: action) {
             ZStack(alignment: .topTrailing) {
                 VStack(spacing: Spacing.sm) {
-                    Text(companion.emoji)
-                        .font(.system(size: 64))
+                    companion.image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 96, height: 96)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     Text(companion.displayName)
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(AppColor.textPrimary)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, Spacing.lg)
+                .padding(.vertical, Spacing.md)
 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
