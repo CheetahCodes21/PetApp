@@ -2,9 +2,27 @@
 //  AuthViewModel.swift
 //  PetApp
 //
-//  Authentication state backed by the Supabase Swift SDK. Handles email
-//  sign in/up and Sign in with Apple (id-token exchange). The SDK persists
-//  and refreshes the session automatically, so returning users stay signed in.
+//  DEMO AUTH: reads/writes a plain `app_users` table via the Supabase
+//  PostgREST API instead of using Supabase Auth. There are no real users
+//  yet, so accounts are just rows (email/password/full_name/apple_sub) and
+//  "being signed in" just means we've cached that row's id locally. This is
+//  not secure (plain-text passwords, wide-open RLS) and must not be reused
+//  once the app has real user data — see the SQL in the table's comment
+//  block below for the schema this expects.
+//
+//  Required table (run once in the Supabase SQL editor):
+//
+//  create table public.app_users (
+//    id uuid primary key default gen_random_uuid(),
+//    email text unique,
+//    password text,
+//    full_name text,
+//    apple_sub text unique,
+//    created_at timestamptz not null default now()
+//  );
+//  alter table public.app_users enable row level security;
+//  create policy "app_users demo access" on public.app_users
+//    for all to anon using (true) with check (true);
 //
 
 import SwiftUI
@@ -20,6 +38,7 @@ final class AuthViewModel: ObservableObject {
     @Published var isAuthenticated = false
     @Published private(set) var firstName: String = ""
     @Published private(set) var email: String = ""
+    @Published private(set) var userId: UUID?
 
     // Sign-in form (existing users)
     @Published var loginIdentifier = ""
@@ -27,10 +46,25 @@ final class AuthViewModel: ObservableObject {
     @Published var isWorking = false
     @Published var errorMessage: String?
 
-    private let auth = SupabaseManager.client.auth
+    /// Must be a fresh builder per query: `PostgrestQueryBuilder` is a class
+    /// and each `.select`/`.insert`/`.eq` mutates it in place, so a stored
+    /// instance would accumulate filters from every earlier request and
+    /// silently match zero rows.
+    private var table: PostgrestQueryBuilder { SupabaseManager.client.from("app_users") }
+
+    private let defaults = UserDefaults.standard
+    private let cacheKey = "auth.cachedUser"
+
+    /// What we persist locally so a returning user is remembered "forever"
+    /// (until sign-out) without needing a real session/token.
+    private struct CachedUser: Codable {
+        let id: UUID
+        let email: String?
+        let fullName: String?
+    }
 
     init() {
-        observeInitialSession()
+        restoreCurrentSession()
     }
 
     var canSubmitSignIn: Bool {
@@ -50,33 +84,49 @@ final class AuthViewModel: ObservableObject {
         isWorking = true
         Task {
             do {
-                let session = try await auth.signIn(email: loginIdentifier,
-                                                    password: loginPassword)
-                apply(session)
+                let normalizedEmail = loginIdentifier.trimmingCharacters(in: .whitespaces).lowercased()
+                let record: AppUserRecord = try await table
+                    .select("id, email, full_name, apple_sub")
+                    .eq("email", value: normalizedEmail)
+                    .eq("password", value: loginPassword)
+                    .single()
+                    .execute()
+                    .value
+                apply(record)
                 isWorking = false
                 isAuthenticated = true   // returning user → straight to home
             } catch {
                 isWorking = false
-                errorMessage = friendly(error)
+                errorMessage = "We couldn't find an account with those details."
             }
         }
     }
 
     // MARK: - Email sign up (new users, from registration)
 
-    /// Creates the account. Throws on failure so the caller can stay on the step.
+    /// Creates the account row. Throws on failure so the caller can stay on the step.
     func signUpWithEmail(email: String, password: String, fullName: String) async throws {
         guard SupabaseConfig.isConfigured else { throw AuthError.notConfigured }
-        let metadata: [String: AnyJSON]? = fullName.isEmpty
-            ? nil
-            : ["full_name": .string(fullName)]
-        let response = try await auth.signUp(email: email, password: password, data: metadata)
-        if let session = response.session {
-            apply(session)
-        } else {
-            // Email confirmation required; no session yet. Onboarding continues.
-            self.email = email
-        }
+
+        let normalizedEmail = email.trimmingCharacters(in: .whitespaces).lowercased()
+
+        let existing: [AppUserRecord] = try await table
+            .select("id")
+            .eq("email", value: normalizedEmail)
+            .execute()
+            .value
+        guard existing.isEmpty else { throw AuthError.emailTaken }
+
+        let newRecord = NewAppUser(email: normalizedEmail,
+                                    password: password,
+                                    fullName: fullName.isEmpty ? nil : fullName)
+        let inserted: AppUserRecord = try await table
+            .insert(newRecord)
+            .select("id, email, full_name, apple_sub")
+            .single()
+            .execute()
+            .value
+        apply(inserted)
         // Note: we do NOT set isAuthenticated here — onboarding continues.
     }
 
@@ -84,14 +134,30 @@ final class AuthViewModel: ObservableObject {
 
     func signInWithApple(_ credential: AppleCredential) async throws {
         guard SupabaseConfig.isConfigured else { throw AuthError.notConfigured }
-        let session = try await auth.signInWithIdToken(
-            credentials: OpenIDConnectCredentials(
-                provider: .apple,
-                idToken: credential.idToken,
-                nonce: credential.rawNonce))
-        apply(session)
-        if firstName.isEmpty, !credential.fullName.isEmpty {
-            firstName = credential.fullName
+        guard let sub = AppleIdentityToken.subject(from: credential.idToken) else {
+            throw AppleSignInError.missingIdentityToken
+        }
+
+        let existing: [AppUserRecord] = try await table
+            .select("id, email, full_name, apple_sub")
+            .eq("apple_sub", value: sub)
+            .execute()
+            .value
+
+        if let record = existing.first {
+            apply(record)
+        } else {
+            let newRecord = NewAppUser(email: nil,
+                                        password: nil,
+                                        fullName: credential.fullName.isEmpty ? nil : credential.fullName,
+                                        appleSub: sub)
+            let inserted: AppUserRecord = try await table
+                .insert(newRecord)
+                .select("id, email, full_name, apple_sub")
+                .single()
+                .execute()
+                .value
+            apply(inserted)
         }
     }
 
@@ -110,7 +176,8 @@ final class AuthViewModel: ObservableObject {
     }
 
     func signOut() {
-        Task { try? await auth.signOut() }
+        defaults.removeObject(forKey: cacheKey)
+        userId = nil
         isAuthenticated = false
         loginIdentifier = ""
         loginPassword = ""
@@ -120,23 +187,45 @@ final class AuthViewModel: ObservableObject {
 
     // MARK: - Session restore
 
-    /// Restores a persisted session on launch (returning users skip onboarding).
-    private func observeInitialSession() {
+    /// Restores the cached account synchronously on launch so a signed-in
+    /// user goes straight to home with no flash of the welcome screen, then
+    /// confirms in the background that the row still exists.
+    private func restoreCurrentSession() {
+        guard let data = defaults.data(forKey: cacheKey),
+              let cached = try? JSONDecoder().decode(CachedUser.self, from: data)
+        else { return }
+
+        userId = cached.id
+        email = cached.email ?? ""
+        firstName = cached.fullName ?? ""
+        isAuthenticated = true
+
         Task {
-            for await change in auth.authStateChanges {
-                if change.event == .initialSession, let session = change.session {
-                    apply(session)
-                    isAuthenticated = true
-                }
+            do {
+                let record: AppUserRecord = try await table
+                    .select("id, email, full_name, apple_sub")
+                    .eq("id", value: cached.id)
+                    .single()
+                    .execute()
+                    .value
+                apply(record)
+            } catch {
+                // Row was deleted (or the table isn't reachable) — don't
+                // strand the user on a "signed in" screen with stale data.
+                signOut()
             }
         }
     }
 
-    private func apply(_ session: Session) {
-        if case let .string(name)? = session.user.userMetadata["full_name"], !name.isEmpty {
-            firstName = name
+    private func apply(_ record: AppUserRecord) {
+        userId = record.id
+        if let name = record.fullName, !name.isEmpty { firstName = name }
+        email = record.email ?? email
+
+        let cached = CachedUser(id: record.id, email: record.email, fullName: record.fullName)
+        if let data = try? JSONEncoder().encode(cached) {
+            defaults.set(data, forKey: cacheKey)
         }
-        email = session.user.email ?? email
     }
 
     // MARK: - Helpers
@@ -144,19 +233,19 @@ final class AuthViewModel: ObservableObject {
     private var notConfiguredMessage: String {
         "Sign-in isn't set up yet. Add your Supabase key in SupabaseConfig.swift."
     }
-
-    private func friendly(_ error: Error) -> String {
-        if let localized = error as? LocalizedError, let message = localized.errorDescription {
-            return message
-        }
-        return "We couldn't sign you in. Please check your details and try again."
-    }
 }
 
-/// Minimal error used when the Supabase key hasn't been configured.
+/// Errors surfaced by the demo table-based auth.
 enum AuthError: LocalizedError {
     case notConfigured
+    case emailTaken
+
     var errorDescription: String? {
-        "Sign-in isn't set up yet. Add your Supabase key in SupabaseConfig.swift."
+        switch self {
+        case .notConfigured:
+            return "Sign-in isn't set up yet. Add your Supabase key in SupabaseConfig.swift."
+        case .emailTaken:
+            return "That email is already registered. Try signing in instead."
+        }
     }
 }
