@@ -12,6 +12,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var auth = AuthViewModel()
     @StateObject private var settings = AppSettings()
+    @StateObject private var companionStore = CompanionStore()
 
     var body: some View {
         Group {
@@ -23,6 +24,7 @@ struct ContentView: View {
         }
         .environmentObject(auth)
         .environmentObject(settings)
+        .environmentObject(companionStore)
         .preferredColorScheme(settings.theme.colorScheme)
         .dynamicTypeSize(settings.textSize.dynamicTypeSize)
         .environment(\.locale, settings.language.locale)
@@ -38,7 +40,7 @@ private struct AuthFlowView: View {
     private enum Route: Hashable {
         case login
         case signIn
-        case createAccount
+        case register
     }
 
     @State private var path: [Route] = []
@@ -46,7 +48,7 @@ private struct AuthFlowView: View {
     var body: some View {
         NavigationStack(path: $path) {
             WelcomeView(
-                onCreateAccount: { path.append(.createAccount) },
+                onCreateAccount: { path.append(.register) },
                 onLogIn: { path.append(.login) }
             )
             .navigationDestination(for: Route.self) { route in
@@ -55,15 +57,11 @@ private struct AuthFlowView: View {
                     LoginView(onContinueWithEmail: { path.append(.signIn) })
                 case .signIn:
                     SignInView()
-                case .createAccount:
-                    CreateAccountView(
-                        onComplete: { draft in
-                            settings.seedNameIfEmpty(draft.firstName)
-                            auth.completeSignUp(with: draft)
-                        },
+                case .register:
+                    RegistrationFlowView(
+                        onComplete: { auth.finishOnboarding(name: settings.name) },
                         onCancel: { if !path.isEmpty { path.removeLast() } }
                     )
-                    .navigationBarBackButtonHidden(true)
                 }
             }
         }

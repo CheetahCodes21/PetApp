@@ -93,6 +93,13 @@ final class AppSettings: ObservableObject {
     @Published var language: AppLanguage {
         didSet { defaults.set(language.rawValue, forKey: Keys.language) }
     }
+    @Published var highContrast: Bool {
+        didSet { defaults.set(highContrast, forKey: Keys.highContrast) }
+    }
+    /// Speech rate for text-to-voice, 0...1 (maps to AVSpeechUtterance rate).
+    @Published var voiceSpeed: Double {
+        didSet { defaults.set(voiceSpeed, forKey: Keys.voiceSpeed) }
+    }
 
     init() {
         name = defaults.string(forKey: Keys.name) ?? ""
@@ -111,6 +118,8 @@ final class AppSettings: ObservableObject {
             ?? .light
         language = AppLanguage(rawValue: defaults.string(forKey: Keys.language) ?? "")
             ?? .english
+        highContrast = defaults.object(forKey: Keys.highContrast) as? Bool ?? false
+        voiceSpeed = defaults.object(forKey: Keys.voiceSpeed) as? Double ?? 0.5
     }
 
     /// Seeds the display name from onboarding if the user hasn't set one yet.
@@ -137,5 +146,7 @@ final class AppSettings: ObservableObject {
         static let textSize = "settings.textSize"
         static let theme = "settings.theme"
         static let language = "settings.language"
+        static let highContrast = "settings.highContrast"
+        static let voiceSpeed = "settings.voiceSpeed"
     }
 }
