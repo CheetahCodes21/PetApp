@@ -8,60 +8,92 @@
 //  `.memoryRecorder`, and the app (or main screen) adds `.recordingRecovery`
 //  once so an interrupted recording is offered back on next launch.
 //
-//  Scope (KAN-19 / KAN-35): this layer captures audio and hands back a finished
-//  `RecordingDraft`. Turning a draft into a saved memory (title, transcript,
-//  photo) is the save-memory flow (KAN-20), which extends this file to present
-//  the completion sheet. Until then, callers receive the raw draft.
+//  This file is the seam between capture (KAN-19) and the save flow (KAN-20):
+//  `RecordingView` only captures and hands back a `RecordingDraft`; here we
+//  present the completion / save sheet (`SaveMemoryView`) and surface the
+//  resulting `SavedMemory`. Capture code is untouched by this layer.
 //
 
 import SwiftUI
 
 extension View {
 
-    /// Presents the recording flow as a full-screen cover when `isPresented`
-    /// becomes true. This is the entry point the main screen's Record button
-    /// uses — one modifier, no knowledge of the recorder needed.
+    /// Presents the recording flow, then the completion sheet, as full-screen
+    /// covers. This is the entry point the main screen's Record button uses.
     ///
     /// - Parameters:
     ///   - isPresented: Toggled true by the Record button; reset automatically.
     ///   - question: The journalling question being answered, shown for context.
-    ///   - onFinish: Called with the finished `RecordingDraft` when the user
-    ///     keeps the recording. KAN-20 replaces this with the save sheet.
+    ///   - onSaved: Called with the saved memory once the user completes the save
+    ///     sheet (title, transcript, photo, date). Use it to route to the memory
+    ///     screen (Dev 4).
     func memoryRecorder(isPresented: Binding<Bool>,
                         question: String? = nil,
-                        onFinish: @escaping (RecordingDraft) -> Void = { _ in }) -> some View {
-        fullScreenCover(isPresented: isPresented) {
-            RecordingView(
-                question: question,
-                onFinish: { draft in
-                    isPresented.wrappedValue = false
-                    onFinish(draft)
-                },
-                onCancel: { isPresented.wrappedValue = false }
-            )
-        }
+                        onSaved: @escaping (SavedMemory) -> Void = { _ in }) -> some View {
+        modifier(MemoryRecorderModifier(isPresented: isPresented,
+                                        question: question,
+                                        onSaved: onSaved))
     }
 
     /// Offers back a recording that was interrupted or lost to termination
-    /// (KAN-35). Add this once, near the app root or on the main screen; it
-    /// checks for a recoverable draft on appear and presents the recovery
-    /// prompt, wiring up Continue / Keep / Delete.
-    ///
-    /// - Parameter onKeep: Called with the recovered draft when the user keeps
-    ///   it. KAN-20 routes this into the save sheet.
-    func recordingRecovery(onKeep: @escaping (RecordingDraft) -> Void = { _ in }) -> some View {
-        modifier(RecordingRecoveryModifier(onKeep: onKeep))
+    /// (KAN-35), then routes Continue / Save through the same save sheet. Add
+    /// this once, near the app root or on the main screen.
+    func recordingRecovery(onSaved: @escaping (SavedMemory) -> Void = { _ in }) -> some View {
+        modifier(RecordingRecoveryModifier(onSaved: onSaved))
     }
 }
 
-/// Drives the crash-recovery prompt and the resume-recording cover.
+/// Presents the recording cover, then the save sheet once the user keeps a
+/// recording. The two covers are sequenced (present the save sheet only after
+/// the recording cover has fully dismissed) so the presentations don't collide.
+private struct MemoryRecorderModifier: ViewModifier {
+    @Binding var isPresented: Bool
+    let question: String?
+    let onSaved: (SavedMemory) -> Void
+
+    @State private var saving: RecordingDraft?
+    @State private var pendingSave: RecordingDraft?
+
+    func body(content: Content) -> some View {
+        content
+            .fullScreenCover(isPresented: $isPresented, onDismiss: {
+                if let pendingSave {
+                    saving = pendingSave
+                    self.pendingSave = nil
+                }
+            }) {
+                RecordingView(
+                    question: question,
+                    onFinish: { draft in
+                        pendingSave = draft
+                        isPresented = false
+                    },
+                    onCancel: { isPresented = false }
+                )
+            }
+            .fullScreenCover(item: $saving) { draft in
+                SaveMemoryView(
+                    draft: draft,
+                    onSave: { memory in
+                        saving = nil
+                        onSaved(memory)
+                    },
+                    onCancel: { saving = nil }
+                )
+            }
+    }
+}
+
+/// Drives the crash-recovery prompt, the resume-recording cover, and the save
+/// sheet. Each presentation is promoted only after the previous one dismisses.
 private struct RecordingRecoveryModifier: ViewModifier {
-    let onKeep: (RecordingDraft) -> Void
+    let onSaved: (SavedMemory) -> Void
 
     @State private var recoverable: RecordingDraft?
     @State private var resuming: RecordingDraft?
+    @State private var saving: RecordingDraft?
     @State private var pendingResume: RecordingDraft?
-    @State private var pendingKeep: RecordingDraft?
+    @State private var pendingSave: RecordingDraft?
 
     func body(content: Content) -> some View {
         content
@@ -71,14 +103,12 @@ private struct RecordingRecoveryModifier: ViewModifier {
                 }
             }
             .sheet(item: $recoverable, onDismiss: {
-                // Act on the user's choice only after the recovery sheet has
-                // fully dismissed, so presentations don't collide.
                 if let pendingResume {
                     resuming = pendingResume
                     self.pendingResume = nil
-                } else if let pendingKeep {
-                    onKeep(pendingKeep)
-                    self.pendingKeep = nil
+                } else if let pendingSave {
+                    saving = pendingSave
+                    self.pendingSave = nil
                 }
             }) { draft in
                 RecoveryPromptView(
@@ -87,8 +117,8 @@ private struct RecordingRecoveryModifier: ViewModifier {
                         pendingResume = toContinue
                         recoverable = nil
                     },
-                    onSave: { toKeep in
-                        pendingKeep = toKeep
+                    onSave: { toSave in
+                        pendingSave = toSave
                         recoverable = nil
                     },
                     onDelete: { toDelete in
@@ -97,15 +127,30 @@ private struct RecordingRecoveryModifier: ViewModifier {
                     }
                 )
             }
-            .fullScreenCover(item: $resuming) { draft in
+            .fullScreenCover(item: $resuming, onDismiss: {
+                if let pendingSave {
+                    saving = pendingSave
+                    self.pendingSave = nil
+                }
+            }) { draft in
                 RecordingView(
                     question: draft.questionText,
                     resuming: draft,
                     onFinish: { finished in
+                        pendingSave = finished
                         resuming = nil
-                        onKeep(finished)
                     },
                     onCancel: { resuming = nil }
+                )
+            }
+            .fullScreenCover(item: $saving) { draft in
+                SaveMemoryView(
+                    draft: draft,
+                    onSave: { memory in
+                        saving = nil
+                        onSaved(memory)
+                    },
+                    onCancel: { saving = nil }
                 )
             }
     }

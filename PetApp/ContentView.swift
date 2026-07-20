@@ -79,9 +79,9 @@ private struct HomePlaceholderView: View {
     // main screen is Dev 2's; their Record button replaces this button and
     // reuses the same `.memoryRecorder` / `.recordingRecovery` modifiers.
     @State private var showRecording = false
-    // TEMP (Dev 3): set when a recording is kept, then handed to the memory
+    // TEMP (Dev 3): set when a memory is saved, then handed to the memory
     // screen. Dev 4's real archive/detail screen replaces the placeholder below.
-    @State private var savedDraft: RecordingDraft?
+    @State private var savedMemory: SavedMemory?
 
     var body: some View {
         NavigationStack {
@@ -123,17 +123,15 @@ private struct HomePlaceholderView: View {
                     .accessibilityLabel("Settings")
                 }
             }
-            // TEMP (Dev 3): where Dev 4's memory screen opens after keeping a
-            // recording.
-            .navigationDestination(item: $savedDraft) { draft in
-                MemoryDestinationPlaceholder(draft: draft)
+            // TEMP (Dev 3): where Dev 4's memory screen opens after saving.
+            .navigationDestination(item: $savedMemory) { memory in
+                MemoryDestinationPlaceholder(memory: memory)
             }
         }
-        // Dev 3 integration surface — the whole recording feature in two lines.
-        // KAN-19 hands back a finished draft; KAN-20 will swap this for the save
-        // sheet that produces a saved memory.
-        .memoryRecorder(isPresented: $showRecording) { draft in savedDraft = draft }
-        .recordingRecovery { draft in savedDraft = draft }
+        // Dev 3 integration surface — the whole recording + save feature in two
+        // lines. On save, hand the SavedMemory to the memory screen (Dev 4).
+        .memoryRecorder(isPresented: $showRecording) { memory in savedMemory = memory }
+        .recordingRecovery { memory in savedMemory = memory }
     }
 
     private var greetingName: String {
@@ -143,16 +141,16 @@ private struct HomePlaceholderView: View {
 }
 
 /// TEMP (Dev 3): stands in for Dev 4's memory screen. It only proves the
-/// handoff works — a kept recording produces a `RecordingDraft` that the memory
-/// screen receives. Dev 4 replaces this with the real archive/detail screen.
+/// handoff works — the save flow produces a `SavedMemory` that the memory screen
+/// receives. Dev 4 replaces this with the real archive/detail screen.
 private struct MemoryDestinationPlaceholder: View {
-    let draft: RecordingDraft
+    let memory: SavedMemory
 
     var body: some View {
         ZStack {
             AppColor.surface.ignoresSafeArea()
             VStack(spacing: Spacing.md) {
-                Text("Kept")
+                Text("Saved")
                     .font(.largeTitle.weight(.bold))
                     .foregroundStyle(AppColor.success)
                 Text("Dev 4's memory screen opens here.")
@@ -160,9 +158,10 @@ private struct MemoryDestinationPlaceholder: View {
                     .foregroundStyle(AppColor.textSecondary)
                     .multilineTextAlignment(.center)
                 VStack(spacing: Spacing.xs) {
-                    Text("Length: \(RecordingView.timeString(draft.duration))")
-                    Text("Segments: \(draft.segmentFileNames.count)")
-                    Text("Recorded: \(draft.createdAt.formatted(date: .abbreviated, time: .shortened))")
+                    Text("Title: \(memory.title)")
+                    Text("Length: \(RecordingView.timeString(memory.duration))")
+                    Text("Transcript: \(memory.transcriptState.rawValue)")
+                    Text("Photo: \(memory.photoFileName == nil ? "none" : "attached")")
                 }
                 .font(.body)
                 .foregroundStyle(AppColor.textPrimary)

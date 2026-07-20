@@ -1,121 +1,137 @@
-# Recording (Dev 3 / Audio) — capture + crash recovery
+# Recording (Dev 3 / Audio) — full flow
 
-This branch delivers **audio capture** (KAN-19), **never-lose-a-recording**
-(KAN-35), and the **microphone permission path** (KAN-8). It is self-contained:
-the recording UI (level meter, timer, pause/resume, start-over, crash recovery)
-is owned here. Other screens only *trigger* it — **do not rebuild recording UI
-in the main screen.**
+This branch is stacked on `feature/kan-19-audio-recording-v2` and adds everything
+after capture: **complete and save a memory** (KAN-20), **voice-data privacy**
+(KAN-38), and **attach a photo** (KAN-21). The recording UI (KAN-19 / KAN-35) and
+the microphone path (KAN-8) live on the branch below — see its README for capture
+details.
 
-> The follow-up branch (KAN-20, "complete and save a memory") layers the
-> completion sheet — title, transcript, photo, save — on top of this. It extends
-> `RecordingIntegration` and does **not** modify the capture code. See the
-> boundary note at the end.
+**Do not rebuild recording or save UI in the main screen** — trigger it with the
+two modifiers below.
 
-## What this branch produces
+## The whole feature in two modifiers (for Dev 2)
 
-Capturing a recording yields a `RecordingDraft` (see `RecordingModels.swift`):
-an id, created date, duration, the ordered audio segment file names on disk, and
-the answered question. Load a segment with `DraftStore.shared.segmentURL(named:)`.
-
-Saving a draft as a real *memory* (assembling the audio, transcript, photo) is
-**not** in this branch — it arrives with KAN-20. Here, keeping a recording hands
-the raw `RecordingDraft` back to the caller.
-
-## For Dev 2 — add recording to the main screen
-
-The main screen owns the layout and the Record button. Wire recording in with
-one state flag and two modifiers:
+The main screen owns the layout and the Record button:
 
 ```swift
 struct MainPetScreen: View {
     @State private var showRecording = false
-    let currentQuestion: String?   // the random journalling question, if any
+    let currentQuestion: String?
 
     var body: some View {
         VStack {
             // ... pet, feed button, question, etc. (Dev 2) ...
             Button("Record") { showRecording = true }   // your styled button
         }
-        // Recording flow — presented as a full-screen cover:
-        .memoryRecorder(isPresented: $showRecording, question: currentQuestion) { draft in
-            // `draft` is a RecordingDraft. On the KAN-20 branch this callback
-            // becomes the saved-memory handoff instead.
+        // Record → (save sheet) → SavedMemory:
+        .memoryRecorder(isPresented: $showRecording, question: currentQuestion) { memory in
+            // `memory` is a SavedMemory. Route to the memory screen (Dev 4),
+            // and optionally react (e.g. bump the streak).
         }
         // Offer back an interrupted recording on next launch (add once):
-        .recordingRecovery { draft in /* keep / route the recovered draft */ }
+        .recordingRecovery { memory in /* route the recovered, saved memory */ }
     }
 }
 ```
 
-Everything inside the cover — permission prompt, level meter, 10s–20min limits,
-pause/resume, phone-call handling, "start over" confirmation — is handled here.
-Recording **starts automatically** when the cover appears, so the user only taps
-once.
+`onSaved` fires when the user taps **Save** in the completion sheet. Everything
+inside — permission prompt, level meter, limits, pause/resume, phone-call
+handling, "start over", assembling segments, on-device transcription, photo
+attach, privacy disclosure, the auto-dismissing "Saved" confirmation — is handled
+here.
 
-## Microphone permission (KAN-8)
+## What the save flow does (KAN-20)
 
-The mic path is owned here (the permission *screen shell* in onboarding is
-Dev 1's). If the user has denied the microphone, tapping Record shows a plain
-explanation with a **single "Open Settings" button** — no other UI, no dead-end.
-The mic usage description is set in the target build settings
-(`INFOPLIST_KEY_NSMicrophoneUsageDescription`), already present on `main`.
+On finishing a recording, `SaveMemoryView` presents: title (required, with a
+prefilled suggestion), audio playback with scrubbing, an editable transcript that
+fills in when speech-to-text finishes, add-photo, a date, and Cancel / Save.
 
-## Limits (team decision)
+- **Transcription** is on-device where supported (`TranscriptionService`). If the
+  user saves *before* it finishes, the memory is saved immediately and the
+  transcript is attached to the stored memory when ready (US-016 AC4) — a detached
+  task survives the sheet dismissing.
+- If transcription fails, the memory saves **audio-only** with a `.failed`
+  transcript state; Dev 4's memory-detail screen offers "Try again" (US-016 AC5).
+- Cancel / close always **confirms** before discarding (US-016 AC7).
+- Saving shows an **auto-dismissing "Saved" confirmation + haptic**, then returns
+  to the host (US-016 AC6). The inline toast can be replaced by Dev 5's shared
+  `ToastView` (KAN-41) when available.
 
-10 seconds minimum, **20 minutes maximum** (not 30) — a deliberate team decision
-for this audience. A warning appears two minutes before the end and recording
-stops automatically at the limit, preserving everything captured. If the backlog
-still says 30 min, that AC should be updated to match this decision.
+## Privacy of voice data (KAN-38)
 
-## Hand-off to Dev 4 (memory screen)
+- A plain-language `PrivacyDisclosureView` is shown **once before the first
+  transcription**, stating that audio is turned into text **on-device** and stored
+  **encrypted**. Acknowledgement is remembered (`@AppStorage voicePrivacyAcknowledged`).
+- Recordings and memories are **encrypted at rest** (file protection on the
+  Recordings and Memories directories). Processing is on-device, so nothing is in
+  transit.
+- **Dev 5 — please link to this from Settings** so it's reachable any time
+  (US-034 AC4). Show it read-only with a Done button:
+  ```swift
+  PrivacyDisclosureView(onAcknowledge: nil)   // read-only, Done button
+  ```
 
-Dev 4 owns the archive and memory-detail screens and their `Memory` model. Dev 4
-does **not** read `RecordingDraft` directly. On the KAN-20 branch, the save flow
-turns a draft into a saved memory using Dev 4's model, then navigates to Dev 4's
-screen. The fields a `Memory` needs from a recording:
+## Attach a photo (KAN-21)
 
-| Field            | Source                        | Branch |
-| ---------------- | ----------------------------- | ------ |
-| audio file URL   | assembled from draft segments | KAN-20 |
-| duration         | `RecordingDraft.duration`     | KAN-19 |
-| created date     | `RecordingDraft.createdAt`    | KAN-19 |
-| question text    | `RecordingDraft.questionText` | KAN-19 |
-| transcript       | speech-to-text on save        | KAN-20 |
-| photo (optional) | photo attachment              | KAN-21 |
+`PhotoAttachmentView` (in the save sheet): choose from library (PhotosPicker, no
+prompt) or take a photo (camera, gated via the shared `PermissionsManager`). If
+the camera is denied, an inline route to Settings is shown; camera is hidden on
+devices without one. One photo per memory, replaceable/removable before saving;
+editing the photo **after** saving is Dev 4's memory-detail screen (KAN-25).
+Stored as compressed JPEG.
 
-**Action:** Dev 3 + Dev 4 confirm this field list on the `Memory` type before
-KAN-20 merges.
+## Hand-off to Dev 4 (memory screen) — the contract
 
-## For Dev 5 (widgets) / Dev 2 (unwell → record) — programmatic entry
+Dev 4 owns the archive and memory-detail screens and their `Memory` model. This
+flow currently writes a **stubbed `SavedMemory`** (`SavedMemory.swift`) via a stub
+`MemoryStore`. When Dev 4's `Memory` / `MemoryRepository` land, the save flow
+writes through the repository instead and this stub is deleted. Fields a `Memory`
+needs:
 
-Use the `RecordingCoordinator` contract in `RecordingModels.swift`. The real
-implementation lands with the save-memory flow (KAN-20); until then use
-`MockRecordingCoordinator`, which returns a fixed sample draft.
+| Field            | Source                          |
+| ---------------- | ------------------------------- |
+| audio file URL   | assembled from draft segments   |
+| duration         | `RecordingDraft.duration`       |
+| created date     | save-sheet date field           |
+| question text    | `RecordingDraft.questionText`   |
+| transcript       | on-device speech-to-text        |
+| transcript state | `.ready` / `.pending` / `.failed` / `.none` |
+| photo (optional) | photo attachment (compressed)   |
+
+Dev 4 also owns: the "Try again" transcript retry on the detail screen, and
+editing/replacing the photo after saving.
 
 ## TEMP scaffolding — do not build on top of it
 
-To exercise this flow before Dev 2's home screen and Dev 4's memory screen
-exist, `ContentView` carries **clearly-marked TEMP** pieces:
+`ContentView` carries **clearly-marked TEMP** pieces so the flow is testable
+before Dev 2's home screen and Dev 4's memory screen exist:
 
 - A **"Record a memory"** button in `HomePlaceholderView` — stands in for Dev 2's
   Record button. **Delete when Dev 2's real button lands.**
-- `MemoryDestinationPlaceholder` — stands in for Dev 4's memory screen; only
-  proves the handoff. **Delete when Dev 4's screen lands.**
+- `MemoryDestinationPlaceholder` — stands in for Dev 4's memory screen; only shows
+  the saved memory's fields to prove the handoff. **Delete when Dev 4's screen
+  lands.**
+- `SavedMemory` / `MemoryStore` — stub persistence. **Replace with Dev 4's
+  `Memory` / `MemoryRepository`, then delete.**
 
-These are intentionally minimal so they don't collide with Dev 2 / Dev 4 work.
-**Please do not add new screens here** — the real screens are owned elsewhere.
+Please **do not add new screens here** — the real screens are owned by Dev 2 / 4.
 
-## Boundary note (for the KAN-20 branch)
+## ⚠️ Manual step — speech-recognition usage description
 
-`RecordingView` exposes `onFinish: (RecordingDraft) -> Void` and knows nothing
-about saving. The save sheet is presented by `RecordingIntegration`, so KAN-20
-extends only that file (and swaps the `ContentView` handoff), leaving the capture
-code untouched. Keep it that way to avoid merge conflicts across the two branches.
+`NSSpeechRecognitionUsageDescription` must be set in the target build settings
+(**Target → Build Settings → "Privacy - Speech Recognition Usage Description"**),
+value e.g. *"MemoMe transcribes your recordings so you can read and search them."*
+Without it the app **crashes** the first time it requests speech-recognition
+permission. (It couldn't be committed via tooling because editing the Xcode
+project file while Xcode is open risks crashing Xcode.) Recording still works
+without it; only transcription is affected.
 
 ## Notes / dependencies
 
-- **Info.plist:** `NSMicrophoneUsageDescription` — recording (in build settings,
-  already on `main`).
-- **Draft model:** `RecordingModels.swift`. Drafts persist under Application
-  Support/`Recordings`, encrypted at rest (file protection), and are recovered on
-  next launch until the user explicitly acts on them.
+- **Info.plist keys:** `NSMicrophoneUsageDescription` (KAN-19, on `main`),
+  `NSCameraUsageDescription` + `NSPhotoLibraryUsageDescription` (KAN-21, on
+  `main`), `NSSpeechRecognitionUsageDescription` (KAN-20, see manual step above).
+- **Capture code** (AudioRecorder, DraftStore, RecordingView, …) is owned by the
+  KAN-19 branch below and is not modified here — this branch only extends
+  `RecordingIntegration` and the `ContentView` handoff, so the two branches don't
+  conflict.
