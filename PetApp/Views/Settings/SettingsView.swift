@@ -180,7 +180,7 @@ struct SettingsView: View {
     private var formattedBirthday: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "d MMMM yyyy"
-        formatter.locale = settings.language.locale
+        formatter.locale = Locale(identifier: "en_US")
         return formatter.string(from: settings.birthday)
     }
 }
@@ -359,6 +359,7 @@ private struct BirthdayEditor: View {
                 DatePicker("My birthday", selection: $birthday,
                            in: ...Date(), displayedComponents: .date)
                     .datePickerStyle(.graphical)
+                    .environment(\.locale, Locale(identifier: "en_US"))
                     .padding()
                 Spacer()
             }

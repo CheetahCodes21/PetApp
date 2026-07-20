@@ -44,6 +44,11 @@ struct LegalFooter: View {
 
 // MARK: - Social sign-in button
 
+enum SocialProvider: String, Identifiable {
+    case apple, facebook, google
+    var id: String { rawValue }
+}
+
 struct SocialButton: View {
     let provider: SocialProvider
     let action: () -> Void
