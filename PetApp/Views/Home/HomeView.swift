@@ -54,6 +54,24 @@ struct HomeView: View {
                 EditCompanionSheet(companion: companion)
             }
         }
+        .task { ensureCompanion() }
+    }
+
+    /// Guarantees there's a companion to show and edit. If onboarding never
+    /// created one on this device (e.g. an existing user just signed in),
+    /// seed a sensible default the user can then edit.
+    private func ensureCompanion() {
+        guard companions.isEmpty else { return }
+        let seeded = Companion(
+            kind: .pet,
+            colorVariant: CompanionColorOption.default.rawValue,
+            name: "My friend",
+            careFrequencyLabel: "Once a week",
+            becomesUnwellIfNotFed: false,
+            vibrateWhenFed: true
+        )
+        modelContext.insert(seeded)
+        try? modelContext.save()
     }
 
     // MARK: - Header
@@ -72,7 +90,7 @@ struct HomeView: View {
 
     private var monthYear: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
+        formatter.dateFormat = "d MMMM yyyy"
         formatter.locale = Locale(identifier: "en_US")
         return formatter.string(from: Date())
     }
@@ -178,13 +196,12 @@ struct HomeView: View {
         if let companion {
             switch companion.kind {
             case .pet:
-                Image(systemName: "pawprint.fill")
+                (PetSpecies(rawValue: companion.petSpeciesRaw) ?? .default).image
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 150, height: 150)
-                    .foregroundStyle(companionColor)
+                    .frame(width: 160, height: 160)
             case .plant:
-                LottieView(name: "FlowerIdleDisplay")
+                LottieView(name: (PlantSpecies(rawValue: companion.plantSpeciesRaw) ?? .default).lottieName)
                     .frame(width: 180, height: 180)
             }
         } else {
@@ -288,6 +305,8 @@ private struct EditCompanionSheet: View {
 
     @State private var name = ""
     @State private var kind: CompanionKind = .pet
+    @State private var petSpecies: PetSpecies = .default
+    @State private var plantSpecies: PlantSpecies = .default
     @State private var colorVariant = CompanionColorOption.default.rawValue
 
     var body: some View {
@@ -296,6 +315,8 @@ private struct EditCompanionSheet: View {
                 AppColor.surface.ignoresSafeArea()
                 ScrollView {
                     VStack(alignment: .leading, spacing: Spacing.lg) {
+                        companionPreview
+
                         LabeledField(label: "Companion name", text: $name)
 
                         VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -308,6 +329,13 @@ private struct EditCompanionSheet: View {
                                 }
                             }
                             .pickerStyle(.segmented)
+                        }
+
+                        VStack(alignment: .leading, spacing: Spacing.xs) {
+                            Text(kind == .pet ? "Choose your pet" : "Choose your plant")
+                                .font(.headline)
+                                .foregroundStyle(AppColor.textPrimary)
+                            speciesPicker
                         }
 
                         VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -363,9 +391,94 @@ private struct EditCompanionSheet: View {
             .onAppear {
                 name = companion.name
                 kind = companion.kind
+                petSpecies = PetSpecies(rawValue: companion.petSpeciesRaw) ?? .default
+                plantSpecies = PlantSpecies(rawValue: companion.plantSpeciesRaw) ?? .default
                 colorVariant = companion.colorVariant
             }
         }
+    }
+
+    private var previewColor: Color {
+        (CompanionColorOption(rawValue: colorVariant) ?? .default).color
+    }
+
+    /// Live preview that updates as the user changes type / colour.
+    private var companionPreview: some View {
+        ZStack {
+            Circle()
+                .fill(previewColor.opacity(0.2))
+                .frame(width: 150, height: 150)
+            Circle()
+                .stroke(previewColor, lineWidth: 4)
+                .frame(width: 150, height: 150)
+
+            Group {
+                switch kind {
+                case .pet:
+                    petSpecies.image
+                        .resizable()
+                        .scaledToFit()
+                case .plant:
+                    LottieView(name: plantSpecies.lottieName)
+                }
+            }
+            .frame(width: 110, height: 110)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var speciesPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Spacing.md) {
+                if kind == .pet {
+                    ForEach(PetSpecies.allCases) { species in
+                        speciesCell(name: species.displayName,
+                                    isSelected: petSpecies == species) {
+                            species.image.resizable().scaledToFit()
+                        } action: {
+                            petSpecies = species
+                        }
+                    }
+                } else {
+                    ForEach(PlantSpecies.allCases) { species in
+                        speciesCell(name: species.displayName,
+                                    isSelected: plantSpecies == species) {
+                            LottieView(name: species.lottieName)
+                        } action: {
+                            plantSpecies = species
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    private func speciesCell<Art: View>(name: String,
+                                        isSelected: Bool,
+                                        @ViewBuilder art: () -> Art,
+                                        action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                art().frame(width: 60, height: 60)
+                Text(name)
+                    .font(.caption)
+                    .foregroundStyle(AppColor.textPrimary)
+            }
+            .padding(Spacing.sm)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(isSelected ? previewColor.opacity(0.18) : .clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(isSelected ? previewColor : .clear, lineWidth: 2)
+            )
+        }
+        .accessibilityLabel(name)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
     private var ageText: String {
@@ -382,6 +495,8 @@ private struct EditCompanionSheet: View {
     private func save() {
         companion.name = name
         companion.kind = kind
+        companion.petSpeciesRaw = petSpecies.rawValue
+        companion.plantSpeciesRaw = plantSpecies.rawValue
         companion.colorVariant = colorVariant
         try? modelContext.save()
         dismiss()
