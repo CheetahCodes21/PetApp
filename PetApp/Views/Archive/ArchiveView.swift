@@ -3,19 +3,24 @@
 //  PetApp
 //
 //  The memory archive. Full grid/search/edit is future work; for now it lists
-//  saved memories or shows a warm empty state.
+//  saved memories (SwiftData) or shows a warm empty state.
 //
 
 import SwiftUI
+import SwiftData
 
 struct ArchiveView: View {
-    @EnvironmentObject private var memories: MemoryStore
+    @Query(sort: \Memory.date, order: .reverse) private var allMemories: [Memory]
+
+    private var memories: [Memory] {
+        allMemories.filter { !$0.isDeleted }
+    }
 
     var body: some View {
         ZStack {
             AppColor.surface.ignoresSafeArea()
 
-            if memories.memories.isEmpty {
+            if memories.isEmpty {
                 emptyState
             } else {
                 list
@@ -47,14 +52,21 @@ struct ArchiveView: View {
                     .font(.largeTitle.weight(.bold))
                     .foregroundStyle(AppColor.textPrimary)
 
-                ForEach(memories.memories) { memory in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(memory.title.isEmpty ? "Untitled memory" : memory.title)
-                            .font(.headline)
-                            .foregroundStyle(AppColor.textPrimary)
-                        Text(memory.date, style: .date)
-                            .font(.subheadline)
-                            .foregroundStyle(AppColor.textSecondary)
+                ForEach(memories) { memory in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(memory.title.isEmpty ? "Untitled memory" : memory.title)
+                                .font(.headline)
+                                .foregroundStyle(AppColor.textPrimary)
+                            Text(memory.date, style: .date)
+                                .font(.subheadline)
+                                .foregroundStyle(AppColor.textSecondary)
+                        }
+                        Spacer()
+                        if memory.isFavourite {
+                            Image(systemName: "star.fill")
+                                .foregroundStyle(AppColor.purple)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(Spacing.md)
@@ -67,5 +79,6 @@ struct ArchiveView: View {
 }
 
 #Preview {
-    ArchiveView().environmentObject(MemoryStore())
+    ArchiveView()
+        .modelContainer(for: [Memory.self], inMemory: true)
 }

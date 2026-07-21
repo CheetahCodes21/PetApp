@@ -4,13 +4,17 @@
 //
 //  The main screen: greeting, week strip, food bar + memory streak, the
 //  companion display, the daily prompt, a feed button, and tap-to-record.
+//  Reads the persisted SwiftData `Companion` and `Memory` models.
 //
 
 import SwiftUI
+import SwiftData
+import UIKit
 
 struct HomeView: View {
-    @EnvironmentObject private var companionStore: CompanionStore
-    @EnvironmentObject private var memories: MemoryStore
+    @Environment(\.modelContext) private var modelContext
+    @Query private var companions: [Companion]
+    @Query private var allMemories: [Memory]
 
     @State private var promptIndex = DailyPrompts.todayIndex
     @State private var showRecordSoon = false
@@ -20,6 +24,8 @@ struct HomeView: View {
     private let amberSoft = Color(hex: "#FBE6BE")
     private let amberText = Color(hex: "#C77A22")
     private let heart = Color(hex: "#E0555F")
+
+    private var companion: Companion? { companions.first }
 
     var body: some View {
         ZStack {
@@ -39,15 +45,15 @@ struct HomeView: View {
                 .padding(.bottom, Spacing.xl)
             }
         }
-        .alert("Recording coming soon",
-               isPresented: $showRecordSoon) {
+        .alert("Recording coming soon", isPresented: $showRecordSoon) {
             Button("OK", role: .cancel) { }
         } message: {
             Text("The voice recording flow is on its way. You'll be able to tap and speak your memory here.")
         }
         .sheet(isPresented: $showEditCompanion) {
-            EditCompanionSheet()
-                .environmentObject(companionStore)
+            if let companion {
+                EditCompanionSheet(companion: companion)
+            }
         }
     }
 
@@ -76,46 +82,48 @@ struct HomeView: View {
 
     private var statCards: some View {
         HStack(spacing: Spacing.md) {
-            // Food bar
             statCard(background: AppColor.purple.opacity(0.14)) {
                 VStack(alignment: .leading, spacing: Spacing.sm) {
-                    HStack {
-                        icon("face.smiling", tint: AppColor.purple)
-                        Spacer()
-                    }
+                    icon("face.smiling", tint: AppColor.purple)
                     Text("Food bar")
                         .font(.headline)
                         .foregroundStyle(AppColor.textPrimary)
                     HStack(spacing: 6) {
                         ForEach(0..<3, id: \.self) { index in
                             Image(systemName: "heart.fill")
-                                .foregroundStyle(index < companionStore.filledHearts
-                                                 ? heart : Color.gray.opacity(0.35))
+                                .foregroundStyle(index < filledHearts ? heart : Color.gray.opacity(0.35))
                         }
                     }
                     .font(.title3)
                 }
             }
-            .accessibilityLabel("Food bar, \(companionStore.filledHearts) of 3")
+            .accessibilityLabel("Food bar, \(filledHearts) of 3")
 
-            // Memory streak
             statCard(background: amberSoft) {
                 VStack(alignment: .leading, spacing: Spacing.sm) {
-                    HStack {
-                        icon("flame.fill", tint: amberText, bg: amber.opacity(0.4))
-                        Spacer()
-                    }
+                    icon("flame.fill", tint: amberText, bg: amber.opacity(0.4))
                     Text("Memory Streak")
                         .font(.headline)
                         .foregroundStyle(amberText)
-                    Text("\(memories.streak) Days")
+                    Text("\(streakDays) Days")
                         .font(.title.weight(.bold))
                         .foregroundStyle(amberText)
                 }
             }
-            .accessibilityLabel("Memory streak, \(memories.streak) days")
+            .accessibilityLabel("Memory streak, \(streakDays) days")
         }
     }
+
+    private var filledHearts: Int {
+        switch companion?.currentHungerState {
+        case "hungry":     return 2
+        case "veryHungry": return 1
+        case "good":       return 3
+        default:           return 3
+        }
+    }
+
+    private var streakDays: Int { companion?.streakCount ?? 0 }
 
     private func statCard<Content: View>(background: Color,
                                          @ViewBuilder _ content: () -> Content) -> some View {
@@ -148,34 +156,49 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 220)
 
-            Button {
-                showEditCompanion = true
-            } label: {
-                Image(systemName: "pencil")
-                    .font(.title3)
-                    .foregroundStyle(AppColor.textPrimary)
-                    .frame(width: 44, height: 44)
-                    .background(.white, in: Circle())
-                    .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+            if companion != nil {
+                Button {
+                    showEditCompanion = true
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.title3)
+                        .foregroundStyle(AppColor.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .background(.white, in: Circle())
+                        .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+                }
+                .padding(Spacing.md)
+                .accessibilityLabel("Edit companion")
             }
-            .padding(Spacing.md)
-            .accessibilityLabel("Edit companion")
         }
         .frame(height: 240)
     }
 
     @ViewBuilder
     private var companionArt: some View {
-        if let profile = companionStore.profile {
-            profile.preview
-                .frame(width: 180, height: 180)
+        if let companion {
+            switch companion.kind {
+            case .pet:
+                Image(systemName: "pawprint.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 150, height: 150)
+                    .foregroundStyle(companionColor)
+            case .plant:
+                LottieView(name: "FlowerIdleDisplay")
+                    .frame(width: 180, height: 180)
+            }
         } else {
             Text("🐣").font(.system(size: 120))
         }
     }
 
     private var companionColor: Color {
-        companionStore.profile?.color ?? AppColor.purple
+        guard let variant = companion?.colorVariant,
+              let option = CompanionColorOption(rawValue: variant) else {
+            return AppColor.purple
+        }
+        return option.color
     }
 
     // MARK: - Prompt row (feed + question + refresh)
@@ -184,7 +207,7 @@ struct HomeView: View {
         HStack(spacing: Spacing.md) {
             VStack(spacing: 4) {
                 Button {
-                    withAnimation { companionStore.feed() }
+                    withAnimation { feed() }
                 } label: {
                     Image(systemName: "fork.knife")
                         .font(.title2)
@@ -220,6 +243,16 @@ struct HomeView: View {
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel("New question")
+        }
+    }
+
+    private func feed() {
+        guard let companion else { return }
+        companion.lastFedAt = Date()
+        companion.currentHungerState = "good"
+        try? modelContext.save()
+        if companion.vibrateWhenFed {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         }
     }
 
@@ -293,41 +326,35 @@ private struct WeekStrip: View {
 // MARK: - Edit companion sheet
 
 private struct EditCompanionSheet: View {
-    @EnvironmentObject private var companionStore: CompanionStore
+    let companion: Companion
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
-    @State private var colorHex = CompanionColor.defaultHex
+    @State private var colorVariant = CompanionColorOption.default.rawValue
 
     var body: some View {
         NavigationStack {
             ZStack {
                 AppColor.surface.ignoresSafeArea()
                 VStack(alignment: .leading, spacing: Spacing.lg) {
-                    if let profile = companionStore.profile {
-                        HStack {
-                            Spacer()
-                            profile.preview.frame(width: 120, height: 120)
-                            Spacer()
-                        }
-                    }
-
                     LabeledField(label: "Companion name", text: $name)
 
                     Text("Colour")
                         .font(.headline)
                         .foregroundStyle(AppColor.textPrimary)
                     HStack(spacing: Spacing.md) {
-                        ForEach(CompanionColor.palette, id: \.self) { hex in
+                        ForEach(CompanionColorOption.allCases) { option in
                             Button {
-                                colorHex = hex
+                                colorVariant = option.rawValue
                             } label: {
                                 Circle()
-                                    .fill(Color(hex: hex))
+                                    .fill(option.color)
                                     .frame(width: 40, height: 40)
                                     .overlay(Circle().stroke(AppColor.textPrimary,
-                                                             lineWidth: colorHex == hex ? 3 : 0).padding(2))
+                                                             lineWidth: colorVariant == option.rawValue ? 3 : 0).padding(2))
                             }
+                            .accessibilityLabel(option.rawValue)
                         }
                     }
 
@@ -346,24 +373,21 @@ private struct EditCompanionSheet: View {
                 }
             }
             .onAppear {
-                name = companionStore.profile?.name ?? ""
-                colorHex = companionStore.profile?.colorHex ?? CompanionColor.defaultHex
+                name = companion.name
+                colorVariant = companion.colorVariant
             }
         }
     }
 
     private func save() {
-        if var profile = companionStore.profile {
-            profile.name = name
-            profile.colorHex = colorHex
-            companionStore.save(profile)
-        }
+        companion.name = name
+        companion.colorVariant = colorVariant
+        try? modelContext.save()
         dismiss()
     }
 }
 
 #Preview {
     HomeView()
-        .environmentObject(CompanionStore())
-        .environmentObject(MemoryStore())
+        .modelContainer(for: [Companion.self, Memory.self, User.self], inMemory: true)
 }

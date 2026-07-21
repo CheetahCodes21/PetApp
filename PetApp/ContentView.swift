@@ -13,7 +13,6 @@ struct ContentView: View {
     @StateObject private var auth = AuthViewModel()
     @StateObject private var settings = AppSettings()
     @StateObject private var companionStore = CompanionStore()
-    @StateObject private var memoryStore = MemoryStore()
 
     var body: some View {
         Group {
@@ -26,7 +25,6 @@ struct ContentView: View {
         .environmentObject(auth)
         .environmentObject(settings)
         .environmentObject(companionStore)
-        .environmentObject(memoryStore)
         .preferredColorScheme(settings.theme.colorScheme)
         .dynamicTypeSize(settings.textSize.dynamicTypeSize)
         .environment(\.locale, settings.language.locale)

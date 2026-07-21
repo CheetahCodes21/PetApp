@@ -94,5 +94,4 @@ private struct BottomNavBar: View {
         .environmentObject(AuthViewModel())
         .environmentObject(AppSettings())
         .environmentObject(CompanionStore())
-        .environmentObject(MemoryStore())
 }
