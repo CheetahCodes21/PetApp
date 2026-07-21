@@ -45,7 +45,7 @@ struct LegalFooter: View {
 // MARK: - Social sign-in button
 
 enum SocialProvider: String, Identifiable {
-    case apple, facebook, google
+    case apple
     var id: String { rawValue }
 }
 
@@ -56,8 +56,6 @@ struct SocialButton: View {
     private var title: String {
         switch provider {
         case .apple: return "Continue with Apple"
-        case .facebook: return "Continue with Facebook"
-        case .google: return "Continue with Google"
         }
     }
 
@@ -79,17 +77,6 @@ struct SocialButton: View {
             Image(systemName: "apple.logo")
                 .font(.title3)
                 .foregroundStyle(.black)
-        case .facebook:
-            Text("f")
-                .font(.headline.weight(.black))
-                .foregroundStyle(.white)
-                .frame(width: 24, height: 24)
-                .background(Color(hex: "#1877F2"), in: Circle())
-        case .google:
-            // Simple multi-color "G" stand-in for the Google mark.
-            Text("G")
-                .font(.headline.weight(.bold))
-                .foregroundStyle(Color(hex: "#4285F4"))
         }
     }
 }

@@ -38,7 +38,7 @@ enum AppColor {
     /// Heading tint (also "NinjaPrincess").
     static let heading = Color("NinjaPrincess")
 
-    static let textPrimary = Color(hex: "#221B2B")
+    static let textPrimary = Color(hex: "#000000")
     static let textSecondary = Color(hex: "#6E6A78")
     static let fieldBorder = Color(hex: "#3E2A4E")
     static let success = Color(hex: "#4E9E5F")

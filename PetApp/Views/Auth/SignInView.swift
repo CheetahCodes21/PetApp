@@ -57,7 +57,8 @@ struct SignInView: View {
                 .frame(width: 200)
                 .padding(.top, Spacing.lg)
                 .disabled(!auth.canSubmitSignIn || auth.isWorking)
-                .opacity(auth.canSubmitSignIn ? 1 : 0.5)
+                .opacity(auth.canSubmitSignIn ? 1 : 0.45)
+                .animation(.easeInOut(duration: 0.2), value: auth.canSubmitSignIn)
 
                 Button("Forgot password?") { }
                     .font(.subheadline.weight(.semibold))

@@ -19,6 +19,10 @@ struct GetStartedStep: View {
     @State private var mode: Mode = .choose
     @State private var email = ""
     @State private var password = ""
+    @State private var confirmPassword = ""
+
+    private let passwordRegex =
+    "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-={}\\[\\]|:;\"'<>,.?/~`]).{8,}$"
     @State private var working = false
     @State private var error: String?
  
@@ -56,7 +60,7 @@ struct GetStartedStep: View {
                     .multilineTextAlignment(.center)
             }
  
-            Text("You can change any of these details later.")
+            Text("You can change these details later.")
                 .font(.subheadline)
                 .foregroundStyle(AppColor.textSecondary)
                 .multilineTextAlignment(.center)
@@ -70,9 +74,32 @@ struct GetStartedStep: View {
                          textContentType: .emailAddress)
             LabeledField(label: "Password", text: $password,
                          isSecure: true, textContentType: .newPassword)
-            Text("At least 6 characters.")
-                .font(.subheadline)
-                .foregroundStyle(AppColor.textSecondary)
+            LabeledField(
+                label: "Confirm Password",
+                text: $confirmPassword,
+                isSecure: true,
+                textContentType: .newPassword
+            )
+            
+            VStack(alignment: .leading, spacing: 6) {
+
+                validationRow(password.count >= 8,
+                              "At least 8 characters")
+
+                validationRow(password.range(of: "[A-Z]", options: .regularExpression) != nil,
+                              "One uppercase letter")
+
+                validationRow(password.range(of: "[a-z]", options: .regularExpression) != nil,
+                              "One lowercase letter")
+
+                validationRow(password.range(of: "[0-9]", options: .regularExpression) != nil,
+                              "One number")
+
+                validationRow(password.range(of: "[^A-Za-z0-9]", options: .regularExpression) != nil,
+                              "One special character")
+
+            }
+            .font(.subheadline)
  
             if let error {
                 Text(error).font(.subheadline).foregroundStyle(.red)
@@ -91,18 +118,44 @@ struct GetStartedStep: View {
         }
     }
  
-    private var canSubmit: Bool {
-        email.contains("@") && password.count >= 6
-    }
- 
     private func createAccount() {
+
+        guard isValidEmail else {
+            error = "Please enter a valid email address."
+            return
+        }
+
+        guard isValidPassword else {
+            error = """
+    Password must contain:
+    • At least 8 characters
+    • One uppercase letter
+    • One lowercase letter
+    • One number
+    • One special character
+    """
+            return
+        }
+
+        guard password == confirmPassword else {
+            error = "Passwords do not match."
+            return
+        }
+
         working = true
         error = nil
+
         Task {
             do {
-                try await auth.signUpWithEmail(email: email, password: password, fullName: fullName)
+                try await auth.signUpWithEmail(
+                    email: email,
+                    password: password,
+                    fullName: fullName
+                )
+
                 working = false
                 onNext()
+
             } catch {
                 working = false
                 self.error = (error as? LocalizedError)?.errorDescription
@@ -128,6 +181,34 @@ struct GetStartedStep: View {
             }
         case .failure:
             break
+        }
+    }
+    private var isValidEmail: Bool {
+        let regex = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+        return NSPredicate(format: "SELF MATCHES %@", regex)
+            .evaluate(with: email)
+    }
+
+    private var isValidPassword: Bool {
+        NSPredicate(format: "SELF MATCHES %@", passwordRegex)
+            .evaluate(with: password)
+    }
+
+    private var canSubmit: Bool {
+        isValidEmail &&
+        isValidPassword &&
+        password == confirmPassword
+    }
+    
+    @ViewBuilder
+    private func validationRow(_ valid: Bool, _ text: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: valid ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(valid ? .green : .gray)
+
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(AppColor.textSecondary)
         }
     }
 }
