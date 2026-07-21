@@ -29,6 +29,20 @@ struct ContentView: View {
         .dynamicTypeSize(settings.textSize.dynamicTypeSize)
         .environment(\.locale, settings.language.locale)
         .animation(.easeInOut, value: auth.isAuthenticated)
+        .onOpenURL { url in
+            // Handles taps on the Lock Screen widget, which sets
+            // widgetURL(petapp://feed) or petapp://question.
+            guard url.scheme == "petapp" else { return }
+            switch url.host {
+            case "feed":
+                Task { await LiveActivityManager.feed() }
+            case "question":
+                // TODO: route to the daily-question screen once it exists.
+                break
+            default:
+                break
+            }
+        }
     }
 }
 
@@ -88,6 +102,20 @@ private struct HomePlaceholderView: View {
                     Text("Your home screen will live here.")
                         .font(.title3)
                         .foregroundStyle(AppColor.textSecondary)
+
+                    // Demo controls — wire real triggers in later, then delete these.
+                    Button("Pet is hungry") {
+                        LiveActivityManager.start(companionAssetName: "chick", hungerLevel: 2)
+                    }
+                    .buttonStyle(OutlinedButtonStyle())
+                    .padding(.horizontal, Spacing.xxl)
+
+                    Button("Feed") {
+                        Task { await LiveActivityManager.feed() }
+                    }
+                    .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+                    .padding(.horizontal, Spacing.xxl)
+
                     Button("Sign out", action: auth.signOut)
                         .buttonStyle(OutlinedButtonStyle())
                         .padding(.horizontal, Spacing.xxl)
