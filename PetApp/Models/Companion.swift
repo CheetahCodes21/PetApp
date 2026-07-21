@@ -11,6 +11,11 @@ final class Companion {
     var kind: CompanionKind
     var colorVariant: String   // CompanionColorOption.rawValue, e.g. "purple" — used to build Lottie file names
     var name: String
+
+    // Selected species (asset-backed). petSpeciesRaw is a PetSpecies.rawValue,
+    // plantSpeciesRaw a PlantSpecies.rawValue; the active one depends on `kind`.
+    var petSpeciesRaw: String = PetSpecies.default.rawValue
+    var plantSpeciesRaw: String = PlantSpecies.default.rawValue
  
     /// Plain-language interval, e.g. "Once a day", "Every two days" — never a raw number.
     var careFrequencyLabel: String
@@ -33,6 +38,8 @@ final class Companion {
         kind: CompanionKind,
         colorVariant: String,
         name: String,
+        petSpeciesRaw: String = PetSpecies.default.rawValue,
+        plantSpeciesRaw: String = PlantSpecies.default.rawValue,
         careFrequencyLabel: String,
         becomesUnwellIfNotFed: Bool,
         vibrateWhenFed: Bool,
@@ -47,6 +54,8 @@ final class Companion {
         self.kind = kind
         self.colorVariant = colorVariant
         self.name = name
+        self.petSpeciesRaw = petSpeciesRaw
+        self.plantSpeciesRaw = plantSpeciesRaw
         self.careFrequencyLabel = careFrequencyLabel
         self.becomesUnwellIfNotFed = becomesUnwellIfNotFed
         self.vibrateWhenFed = vibrateWhenFed

@@ -29,51 +29,56 @@ struct ArchiveView: View {
     }
 
     var body: some View {
+        ZStack {
+            AppColor.screenBackground.ignoresSafeArea()
 
-        NavigationStack {
+            if memories.isEmpty {
+                emptyState
+            } else {
+                list
+            }
+        }
+    }
 
-            VStack(spacing: 16) {
+    private var emptyState: some View {
+        VStack(spacing: Spacing.md) {
+            Image(systemName: "books.vertical")
+                .font(.system(size: 64))
+                .foregroundStyle(AppColor.ninja.opacity(0.6))
+            Text("Your memories will live here")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(AppColor.textPrimary)
+            Text("Once you record a memory, you'll find it here to listen back to, search, and treasure.")
+                .font(.body)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(AppColor.textSecondary)
+                .padding(.horizontal, Spacing.xl)
+        }
+        .padding()
+    }
 
-                Picker("", selection: $favouritesOnly) {
+    private var list: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.md) {
+                Text("Memories")
+                    .font(.largeTitle.weight(.bold))
+                    .foregroundStyle(AppColor.textPrimary)
 
-                    Text("All")
-                        .tag(false)
-
-                    Text("Favourites")
-                        .tag(true)
-
-                }
-                .pickerStyle(.segmented)
-
-                TextField("Search memories...", text: $searchText)
-                    .textFieldStyle(.roundedBorder)
-
-                if memories.isEmpty {
-
-                    ContentUnavailableView(
-                        "No Memories",
-                        systemImage: "books.vertical",
-                        description: Text("Record your first memory.")
-                    )
-
-                } else {
-
-                    List {
-
-                        ForEach(memories) { memory in
-
-                            NavigationLink {
-
-                                MemoryDetailView(memory: memory)
-
-                            } label: {
-
-                                MemoryCard(memory: memory)
-
-                            }
-
+                ForEach(memories) { memory in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(memory.title.isEmpty ? "Untitled memory" : memory.title)
+                                .font(.headline)
+                                .foregroundStyle(AppColor.textPrimary)
+                            Text(memory.date, style: .date)
+                                .font(.subheadline)
+                                .foregroundStyle(AppColor.textSecondary)
                         }
-
+                        Spacer()
+                        if memory.isFavourite {
+                            Image(systemName: "star.fill")
+                                .foregroundStyle(AppColor.ninja)
+                        }
                     }
                     .listStyle(.plain)
 

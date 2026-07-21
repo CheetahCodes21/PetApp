@@ -12,7 +12,7 @@ struct SignInView: View {
 
     var body: some View {
         ZStack {
-            AppColor.thistle.ignoresSafeArea()
+            AppColor.screenBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 Text("Log into account")

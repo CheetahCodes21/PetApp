@@ -16,10 +16,10 @@
 import Foundation
 
 enum SupabaseConfig {
-    static let url = URL(string: "https://xkfigtgqnzyltqhurpln.supabase.co")!
+    static let url = URL(string: "https://sscezgczcgixirxijllt.supabase.co")!
 
     /// Project publishable (public) key — safe to ship in a client app.
-    static let anonKey = "sb_publishable_VX447WshmZDHRWh7IDO8Aw_l6-aRuhc"
+    static let anonKey = "sb_publishable_s5NJ2OW2voHzQIkwjBB4rQ_EnyuLD6Z"
 
     /// Whether a real anon key has been provided.
     static var isConfigured: Bool {

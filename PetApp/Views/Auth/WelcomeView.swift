@@ -13,7 +13,7 @@ struct WelcomeView: View {
 
     var body: some View {
         ZStack {
-            AppColor.snow.ignoresSafeArea()
+            AppColor.screenBackground.ignoresSafeArea()
 
             VStack(spacing: Spacing.lg) {
                 Spacer()

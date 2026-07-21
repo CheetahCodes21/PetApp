@@ -2,16 +2,46 @@
 //  HomeScreenWidgets.swift
 //  PetAppWidgets
 //
-//  Home Screen widgets. Unlike the Lock Screen accessory widget, these
-//  render in full color (unless the person turns on Tinted appearance in
-//  Home Screen editing, which the system handles automatically). Uses the
-//  same AppColor palette as the app — copy Theme.swift's color values into
-//  this target too (widget extensions don't share code with the app unless
-//  the file is added to both targets in Xcode's File Inspector).
+//  Home Screen widgets, styled to match the app's theme palette. The widget
+//  extension doesn't share Theme.swift, so the theme colours are mirrored
+//  locally below (kept in sync by hand).
 //
 
 import WidgetKit
 import SwiftUI
+import UIKit
+
+/// Loads the companion image the app wrote into the shared App Group
+/// container (the widget can't read the app's asset catalog directly).
+private func companionImage() -> Image {
+    if let container = FileManager.default
+        .containerURL(forSecurityApplicationGroupIdentifier: AppGroup.id),
+       let ui = UIImage(contentsOfFile: container.appendingPathComponent("companion.png").path) {
+        return Image(uiImage: ui)
+    }
+    return Image(systemName: "pawprint.fill")
+}
+
+// MARK: - Theme (mirrors the app's "App theme colours")
+
+private extension Color {
+    static let wThistle     = Color(hex: "#C8B8DB")
+    static let wSnow        = Color(hex: "#F9F4F5")
+    static let wBlackberry  = Color(hex: "#502F4C")
+    static let wNinja       = Color(hex: "#735084")
+    static let wHeart       = Color(hex: "#E0555F")
+    static let wAmber       = Color(hex: "#E8912E")
+}
+
+private var lavenderBackground: some View {
+    LinearGradient(colors: [Color.wThistle.opacity(0.9), Color.wSnow],
+                   startPoint: .topLeading, endPoint: .bottomTrailing)
+}
+
+private var plumBackground: some View {
+    LinearGradient(colors: [Color.wBlackberry, Color(hex: "#2C1838")],
+                   startPoint: .topLeading, endPoint: .bottomTrailing)
+}
 
 // MARK: - Medium widget: "Today's question is ready"
 
@@ -21,51 +51,55 @@ struct QuestionReadyWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: PetTimelineProvider()) { entry in
             QuestionReadyView(entry: entry)
-                .containerBackground(for: .widget) {
-                    LinearGradient(
-                        colors: [Color(hex: "#2E1A3D"), Color(hex: "#1B0F26")],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                }
+                .containerBackground(for: .widget) { plumBackground }
         }
         .configurationDisplayName("Today's Question")
-        .description("Shows when today's memory question is ready to answer.")
+        .description("Shows today's memory question and how your companion is doing.")
         .supportedFamilies([.systemMedium])
     }
 }
 
 private struct QuestionReadyView: View {
     let entry: PetEntry
-
-    private var progress: Double {
-        guard entry.data.memoriesGoalThisMonth > 0 else { return 0 }
-        return min(1, Double(entry.data.memoriesThisMonth) / Double(entry.data.memoriesGoalThisMonth))
-    }
+    private var d: PetWidgetData { entry.data }
 
     var body: some View {
         HStack(spacing: 14) {
-            Image(entry.data.companionAssetName)
+            companionImage()
                 .resizable()
                 .scaledToFit()
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(.white.opacity(0.15)))
+                .frame(width: 58, height: 58)
+                .padding(6)
+                .foregroundStyle(.white)
+                .background(Circle().fill(.white.opacity(0.14)))
 
-            VStack(alignment: .leading, spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Today's question is ready")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
-                    Text(entry.data.todaysQuestion)
-                        .font(.footnote)
-                        .foregroundStyle(.white.opacity(0.75))
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Today's question")
+                    .font(.caption2.weight(.bold))
+                    .textCase(.uppercase)
+                    .foregroundStyle(Color.wThistle)
+
+                Text(d.todaysQuestion)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+
+                Spacer(minLength: 2)
+
+                HStack(spacing: 8) {
+                    HStack(spacing: 3) {
+                        ForEach(0..<5, id: \.self) { index in
+                            Image(systemName: "heart.fill")
+                                .font(.caption2)
+                                .foregroundStyle(index < d.hungerLevel ? Color.wHeart : .white.opacity(0.22))
+                        }
+                    }
+                    Spacer()
+                    Label("\(d.dayStreak)", systemImage: "flame.fill")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.wAmber)
                 }
-
-                ProgressView(value: progress)
-                    .tint(Color(hex: "#B99BE0"))
-
-                Text("\(entry.data.memoriesThisMonth) of \(entry.data.memoriesGoalThisMonth) memories this month")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.75))
             }
         }
         .padding(4)
@@ -79,14 +113,11 @@ struct StreakWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: PetTimelineProvider()) { entry in
-            StatSmallView(
-                icon: Image(entry.data.companionAssetName),
-                systemIcon: nil,
-                value: "\(entry.data.dayStreak)",
-                label: "day streak",
-                tint: Color(hex: "#6B4E9E")
-            )
-            .containerBackground(.white, for: .widget)
+            StatSmallView(systemIcon: "flame.fill",
+                          value: "\(entry.data.dayStreak)",
+                          label: "day streak",
+                          tint: .wAmber)
+                .containerBackground(for: .widget) { lavenderBackground }
         }
         .configurationDisplayName("Day Streak")
         .description("Your current daily check-in streak.")
@@ -101,14 +132,11 @@ struct MemoriesSavedWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: PetTimelineProvider()) { entry in
-            StatSmallView(
-                icon: nil,
-                systemIcon: "heart.fill",
-                value: "\(entry.data.memoriesSavedTotal)",
-                label: "memories saved",
-                tint: Color(hex: "#6B4E9E")
-            )
-            .containerBackground(.white, for: .widget)
+            StatSmallView(systemIcon: "heart.fill",
+                          value: "\(entry.data.memoriesSavedTotal)",
+                          label: "memories saved",
+                          tint: .wHeart)
+                .containerBackground(for: .widget) { lavenderBackground }
         }
         .configurationDisplayName("Memories Saved")
         .description("Total memories saved so far.")
@@ -117,35 +145,33 @@ struct MemoriesSavedWidget: Widget {
 }
 
 private struct StatSmallView: View {
-    var icon: Image?
-    var systemIcon: String?
+    let systemIcon: String
     let value: String
     let label: String
     let tint: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Group {
-                if let icon { icon.resizable().scaledToFit() }
-                else if let systemIcon { Image(systemName: systemIcon).resizable().scaledToFit().foregroundStyle(tint) }
-            }
-            .frame(width: 28, height: 28)
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: systemIcon)
+                .font(.headline)
+                .foregroundStyle(tint)
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(.white.opacity(0.7)))
 
             Spacer(minLength: 0)
 
             Text(value)
-                .font(.system(size: 30, weight: .bold, design: .rounded))
-                .foregroundStyle(Color(hex: "#221B2B"))
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .foregroundStyle(Color.wBlackberry)
             Text(label)
-                .font(.caption)
-                .foregroundStyle(Color(hex: "#6E6A78"))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(Color.wNinja)
         }
-        .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }
 
-// MARK: - Local hex helper (remove if Theme.swift's Color(hex:) is shared into this target)
+// MARK: - Local hex helper
 
 private extension Color {
     init(hex: String) {

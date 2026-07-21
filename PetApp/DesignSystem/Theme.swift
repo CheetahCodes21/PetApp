@@ -38,11 +38,22 @@ enum AppColor {
     /// Heading tint (also "NinjaPrincess").
     static let heading = Color("NinjaPrincess")
 
-    static let textPrimary = Color(hex: "#000000")
-    static let textSecondary = Color(hex: "#000000") //6E6A78
-    static let fieldBorder = Color(hex: "#502f4C")
+    /// Primary text — deep plum ("BlackberryCream") from the theme assets.
+    static let textPrimary = Color("BlackberryCream")
+    /// Secondary text — muted purple ("NinjaPrincess") for hierarchy.
+    static let textSecondary = Color("NinjaPrincess")
+    /// Field borders — the same deep plum.
+    static let fieldBorder = Color("BlackberryCream")
     static let success = Color(hex: "#4E9E5F")
     static let successSoft = Color(hex: "#DCEEDF")
+
+    /// Standard screen background: a soft lavender ("Thistle") → near-white
+    /// ("Snow") wash so screens feel warm and have depth instead of flat white.
+    static let screenBackground = LinearGradient(
+        colors: [Color("Thistle").opacity(0.75), Color("Snow")],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
 }
 
 enum AppFont {

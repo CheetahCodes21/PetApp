@@ -223,7 +223,7 @@ struct SaveMemoryView: View {
                 }
                 .padding(Spacing.lg)
             }
-            .background(AppColor.surface.ignoresSafeArea())
+            .background(AppColor.screenBackground.ignoresSafeArea())
             .navigationTitle("Save memory")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -273,7 +273,7 @@ struct SaveMemoryView: View {
                 .padding(Spacing.md)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(titleMissing ? AppColor.plum : AppColor.fieldBorder.opacity(0.4),
+                        .stroke(titleMissing ? AppColor.blackberry : AppColor.fieldBorder.opacity(0.4),
                                 lineWidth: titleMissing ? 2 : 1)
                 )
                 .focused($titleFocused)
@@ -309,7 +309,7 @@ struct SaveMemoryView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, Spacing.md)
                             .frame(minHeight: 44)
-                            .background(Capsule().fill(AppColor.purple))
+                            .background(Capsule().fill(AppColor.ninja))
                     }
                     Text(RecordingView.timeString(model.progress * model.duration)
                          + " / " + RecordingView.timeString(model.duration))
@@ -318,7 +318,7 @@ struct SaveMemoryView: View {
                 }
                 Slider(value: Binding(get: { model.progress },
                                       set: { model.seek(to: $0) }), in: 0...1)
-                    .tint(AppColor.purple)
+                    .tint(AppColor.ninja)
             }
         }
     }
@@ -349,7 +349,7 @@ struct SaveMemoryView: View {
                     Text("We couldn't write this out.")
                         .foregroundStyle(AppColor.textSecondary)
                     Button("Try again") { model.retryTranscription() }
-                        .foregroundStyle(AppColor.purple)
+                        .foregroundStyle(AppColor.ninja)
                 }
                 .font(.callout)
             }
@@ -359,7 +359,7 @@ struct SaveMemoryView: View {
     private var dateSection: some View {
         DatePicker("Date", selection: $model.date, displayedComponents: .date)
             .font(.headline)
-            .tint(AppColor.purple)
+            .tint(AppColor.ninja)
     }
 
     // MARK: Actions
@@ -400,7 +400,7 @@ private struct SavedConfirmationToast: View {
         .padding(Spacing.lg)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(AppColor.surface)
+                .fill(AppColor.snow)
                 .shadow(radius: 12)
         )
         .transition(.opacity)
