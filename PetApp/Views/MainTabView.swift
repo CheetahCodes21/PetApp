@@ -73,7 +73,7 @@ private struct BottomNavBar: View {
                 Text(tab.title)
                     .font(.caption.weight(.semibold))
             }
-            .foregroundStyle(isSelected ? AppColor.purple : AppColor.textSecondary)
+            .foregroundStyle(isSelected ? AppColor.ninja : AppColor.textSecondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, Spacing.sm)
             .contentShape(Rectangle())
@@ -83,7 +83,7 @@ private struct BottomNavBar: View {
     }
 
     private var navBackground: some View {
-        AppColor.surface
+        AppColor.snow
             .shadow(color: .black.opacity(0.08), radius: 6, y: -2)
             .ignoresSafeArea(edges: .bottom)
     }

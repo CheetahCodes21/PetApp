@@ -13,7 +13,7 @@ struct WelcomeView: View {
 
     var body: some View {
         ZStack {
-            AppColor.surface.ignoresSafeArea()
+            AppColor.snow.ignoresSafeArea()
 
             VStack(spacing: Spacing.lg) {
                 Spacer()
@@ -23,10 +23,10 @@ struct WelcomeView: View {
                     .accessibilityHidden(true)
 
                 VStack(spacing: Spacing.sm) {
-                    Text("Memory Companion")
+                    Text("MemoMe")
                         .font(.largeTitle.weight(.bold))
                         .foregroundStyle(AppColor.heading)
-                    Text("Keep your memories close,\none day at a time.")
+                    Text("A companion for your everyday memories.")
                         .font(.title3)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(AppColor.textPrimary)
@@ -36,7 +36,7 @@ struct WelcomeView: View {
 
                 VStack(spacing: Spacing.md) {
                     Button("Create an account", action: onCreateAccount)
-                        .buttonStyle(FilledButtonStyle(background: AppColor.plum))
+                        .buttonStyle(FilledButtonStyle(background: AppColor.blackberry))
 
                     Button("I already have an account", action: onLogIn)
                         .buttonStyle(OutlinedButtonStyle())

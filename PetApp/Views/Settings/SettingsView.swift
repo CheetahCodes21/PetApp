@@ -23,7 +23,7 @@ struct SettingsView: View {
 
     var body: some View {
         ZStack {
-            AppColor.surface.ignoresSafeArea()
+            AppColor.snow.ignoresSafeArea()
 
             ScrollView {
                 VStack(spacing: Spacing.lg) {
@@ -49,7 +49,7 @@ struct SettingsView: View {
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(.title2.weight(.semibold))
-                            .foregroundStyle(AppColor.purple)
+                            .foregroundStyle(AppColor.ninja)
                     }
                     .accessibilityLabel("Back")
                 }
@@ -78,7 +78,7 @@ struct SettingsView: View {
         VStack(spacing: Spacing.sm) {
             ZStack {
                 Circle()
-                    .fill(AppColor.purple.opacity(0.25))
+                    .fill(AppColor.ninja.opacity(0.25))
                     .frame(width: 120, height: 120)
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 52))
@@ -192,7 +192,7 @@ struct SettingsView: View {
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, Spacing.xs)
-        .background(AppColor.purple.opacity(0.18),
+        .background(AppColor.ninja.opacity(0.18),
                     in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
@@ -251,7 +251,7 @@ private struct ToggleRow: View {
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(AppColor.textPrimary)
         }
-        .tint(AppColor.purple)
+        .tint(AppColor.ninja)
         .padding(.vertical, Spacing.md)
     }
 }
@@ -267,7 +267,7 @@ private struct TextSizeSelector: View {
             cell(.medium, size: 22)
             cell(.large, size: 28)
         }
-        .background(AppColor.purple.opacity(0.12),
+        .background(AppColor.ninja.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Text size")
@@ -283,7 +283,7 @@ private struct TextSizeSelector: View {
                 .frame(width: 52, height: 52)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(selection == value ? AppColor.purple : .clear)
+                        .fill(selection == value ? AppColor.ninja : .clear)
                 )
         }
         .accessibilityLabel(label(for: value))
@@ -309,7 +309,7 @@ private struct ThemeSelector: View {
             segment("Light", value: .light)
             segment("Dark", value: .dark)
         }
-        .background(AppColor.purple.opacity(0.12),
+        .background(AppColor.ninja.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
@@ -319,7 +319,7 @@ private struct ThemeSelector: View {
         } label: {
             Text(title)
                 .font(.headline)
-                .foregroundStyle(selection == value ? AppColor.purple : AppColor.textSecondary)
+                .foregroundStyle(selection == value ? AppColor.ninja : AppColor.textSecondary)
                 .padding(.vertical, Spacing.sm)
                 .frame(width: 80)
                 .background(

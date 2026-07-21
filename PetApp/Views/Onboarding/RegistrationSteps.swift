@@ -112,7 +112,7 @@ struct GetStartedStep: View {
                     Text("Create account")
                 }
             }
-            .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+            .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
             .disabled(!canSubmit || working)
             .opacity(canSubmit ? 1 : 0.5)
         }
@@ -242,7 +242,7 @@ struct PermissionsStep: View {
                 } label: {
                     Text(requesting ? "Requesting…" : "Allow access")
                 }
-                .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+                .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
                 .disabled(requesting)
                 .padding(.top, Spacing.xs)
             }
@@ -253,7 +253,7 @@ struct PermissionsStep: View {
         HStack(alignment: .top, spacing: Spacing.md) {
             Image(systemName: permission.systemImage)
                 .font(.title2)
-                .foregroundStyle(AppColor.purple)
+                .foregroundStyle(AppColor.ninja)
                 .frame(width: 40)
  
             VStack(alignment: .leading, spacing: 2) {
@@ -352,7 +352,7 @@ struct AccessibilityStep: View {
                 labeled("Voice speed") {
                     VStack(spacing: Spacing.sm) {
                         Slider(value: $settings.voiceSpeed, in: 0...1)
-                            .tint(AppColor.purple)
+                            .tint(AppColor.ninja)
                         Button {
                             SpeechService.shared.speak(
                                 "Hello, this is how I will read your memories.",
@@ -361,7 +361,7 @@ struct AccessibilityStep: View {
                         } label: {
                             Label("Test voice", systemImage: "speaker.wave.2.fill")
                                 .font(.headline)
-                                .foregroundStyle(AppColor.purple)
+                                .foregroundStyle(AppColor.ninja)
                         }
                     }
                 }
@@ -373,7 +373,7 @@ struct AccessibilityStep: View {
                 Toggle(isOn: $settings.textToVoice) {
                     controlLabel("Text-to-voice")
                 }
-                .tint(AppColor.purple)
+                .tint(AppColor.ninja)
             }
         }
     }
@@ -430,17 +430,17 @@ struct CompanionStep: View {
                     ),
                     in: 1...15, step: 1
                 )
-                .tint(AppColor.purple)
+                .tint(AppColor.ninja)
  
                 Toggle(isOn: $profile.sickIfNotFed) {
                     toggleLabel("Show as sick if not fed in time")
                 }
-                .tint(AppColor.purple)
+                .tint(AppColor.ninja)
  
                 Toggle(isOn: $profile.vibrateWhenFed) {
                     toggleLabel("Vibrate phone when fed")
                 }
-                .tint(AppColor.purple)
+                .tint(AppColor.ninja)
             }
         }
     }
@@ -520,10 +520,10 @@ struct WelcomePopup: View {
                     .foregroundStyle(AppColor.textSecondary)
  
                 Button("Let's go", action: onFinish)
-                    .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+                    .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
             }
             .padding(Spacing.xl)
-            .background(AppColor.surface,
+            .background(AppColor.snow,
                         in: RoundedRectangle(cornerRadius: 28, style: .continuous))
             .padding(.horizontal, Spacing.xl)
         }
@@ -550,7 +550,7 @@ private struct FontSizePicker: View {
             cell(.medium, size: 19)
             cell(.large, size: 24)
         }
-        .background(AppColor.purple.opacity(0.12),
+        .background(AppColor.ninja.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
  
@@ -562,7 +562,7 @@ private struct FontSizePicker: View {
                 .frame(width: 44, height: 44)
                 .background(
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(selection == value ? AppColor.purple : .clear)
+                        .fill(selection == value ? AppColor.ninja : .clear)
                 )
         }
     }
@@ -576,7 +576,7 @@ private struct SegmentedTheme: View {
             seg("Light", .light)
             seg("Dark", .dark)
         }
-        .background(AppColor.purple.opacity(0.12),
+        .background(AppColor.ninja.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
  
@@ -584,7 +584,7 @@ private struct SegmentedTheme: View {
         Button { selection = value } label: {
             Text(title)
                 .font(.headline)
-                .foregroundStyle(selection == value ? AppColor.purple : AppColor.textSecondary)
+                .foregroundStyle(selection == value ? AppColor.ninja : AppColor.textSecondary)
                 .padding(.vertical, Spacing.sm)
                 .frame(width: 70)
                 .background(
@@ -609,12 +609,12 @@ private struct SegmentedKind: View {
                         .padding(.vertical, Spacing.md)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(selection == kind ? AppColor.purple : .clear)
+                                .fill(selection == kind ? AppColor.ninja : .clear)
                         )
                 }
             }
         }
-        .background(AppColor.purple.opacity(0.12),
+        .background(AppColor.ninja.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }

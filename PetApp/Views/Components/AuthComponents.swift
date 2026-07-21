@@ -144,7 +144,7 @@ struct StepProgress: View {
         HStack(spacing: Spacing.xs) {
             ForEach(0..<total, id: \.self) { index in
                 Capsule()
-                    .fill(index < current ? AppColor.purple : AppColor.purple.opacity(0.2))
+                    .fill(index < current ? AppColor.ninja : AppColor.ninja.opacity(0.2))
                     .frame(width: index < current ? 26 : 22, height: 6)
             }
         }

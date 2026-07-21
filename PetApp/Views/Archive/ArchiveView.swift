@@ -18,7 +18,7 @@ struct ArchiveView: View {
 
     var body: some View {
         ZStack {
-            AppColor.surface.ignoresSafeArea()
+            AppColor.snow.ignoresSafeArea()
 
             if memories.isEmpty {
                 emptyState
@@ -32,7 +32,7 @@ struct ArchiveView: View {
         VStack(spacing: Spacing.md) {
             Image(systemName: "books.vertical")
                 .font(.system(size: 64))
-                .foregroundStyle(AppColor.purple.opacity(0.6))
+                .foregroundStyle(AppColor.ninja.opacity(0.6))
             Text("Your memories will live here")
                 .font(.title2.weight(.bold))
                 .foregroundStyle(AppColor.textPrimary)
@@ -65,7 +65,7 @@ struct ArchiveView: View {
                         Spacer()
                         if memory.isFavourite {
                             Image(systemName: "star.fill")
-                                .foregroundStyle(AppColor.purple)
+                                .foregroundStyle(AppColor.ninja)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

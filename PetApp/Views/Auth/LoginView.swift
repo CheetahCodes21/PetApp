@@ -17,7 +17,7 @@ struct LoginView: View {
 
     var body: some View {
         ZStack {
-            AppColor.surface
+            AppColor.snow
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -86,7 +86,7 @@ struct LoginView: View {
                         }
                     }
                     .buttonStyle(
-                        FilledButtonStyle(background: AppColor.plum)
+                        FilledButtonStyle(background: AppColor.blackberry)
                     )
                     .frame(height: 54)
                 }
@@ -102,7 +102,7 @@ struct LoginView: View {
             }
         }
         .navigationBarBackButtonHidden(false)
-        .toolbarBackground(AppColor.lavender, for: .navigationBar)
+        .toolbarBackground(AppColor.thistle, for: .navigationBar)
         .loadingOverlay(
             working,
             message: "Signing you in…"

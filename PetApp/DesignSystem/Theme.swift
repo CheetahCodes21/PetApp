@@ -27,22 +27,35 @@ enum AppColor {
     // Palette sourced from Assets.xcassets → "App theme colours" so the app's
     // look is driven by the project's named theme colours.
 
-    /// Soft lavender ("Thistle") used on the login / sign-in screens.
-    static let lavender = Color("Thistle")
+    /// Soft ("Thistle") used on the login / sign-in screens.
+    static let thistle = Color("Thistle")
     /// Near-white ("Snow") used on the create-account / settings / home screens.
-    static let surface = Color("Snow")
-    /// Deep plum ("BlackberryCream") for the primary call-to-action.
-    static let plum = Color("BlackberryCream")
+    static let snow = Color("Snow")
+    /// Deep blackberry ("BlackberryCream") for the primary call-to-action.
+    static let blackberry = Color("BlackberryCream")
     /// Muted purple ("NinjaPrincess") for primary buttons and accents.
-    static let purple = Color("NinjaPrincess")
+    static let ninja = Color("NinjaPrincess")
     /// Heading tint (also "NinjaPrincess").
     static let heading = Color("NinjaPrincess")
 
     static let textPrimary = Color(hex: "#000000")
-    static let textSecondary = Color(hex: "#6E6A78")
-    static let fieldBorder = Color(hex: "#3E2A4E")
+    static let textSecondary = Color(hex: "#000000") //6E6A78
+    static let fieldBorder = Color(hex: "#502f4C")
     static let success = Color(hex: "#4E9E5F")
     static let successSoft = Color(hex: "#DCEEDF")
+}
+
+enum AppFont {
+
+    static let pageHeading = Font.system(size: 32, weight: .regular)
+
+    static let sectionTitle = Font.system(size: 24, weight: .semibold)
+
+    static let body = Font.custom("Inter-Medium", size: 20)
+
+    static let button = Font.system(size: 20, weight: .medium)
+
+    static let caption = Font.system(size: 15, weight: .medium)
 }
 
 // MARK: - Spacing
@@ -65,7 +78,7 @@ struct FilledButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.title3.weight(.semibold))
+            .font(AppFont.button)
             .foregroundStyle(foreground)
             .frame(maxWidth: .infinity)
             .frame(minHeight: 56)
@@ -84,7 +97,7 @@ struct OutlinedButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.title3.weight(.medium))
+            .font(AppFont.button)
             .foregroundStyle(AppColor.textPrimary)
             .frame(maxWidth: .infinity)
             .frame(minHeight: 56)
