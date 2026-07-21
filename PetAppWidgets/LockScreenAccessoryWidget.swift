@@ -59,6 +59,12 @@ private struct LockScreenPetView: View {
             Spacer(minLength: 0)
         }
         .widgetURL(URL(string: "petapp://\(entry.data.isHungry ? "feed" : "question")"))
+        .containerBackground(for: .widget) {
+            // The system ignores this and applies its own tint/background
+            // for accessory widgets on the Lock Screen — this is just here
+            // to satisfy the required containerBackground API.
+            Color.clear
+        }
     }
 }
 

@@ -20,6 +20,7 @@
 import ActivityKit
 import WidgetKit
 import SwiftUI
+import AppIntents
 
 struct FeedLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
