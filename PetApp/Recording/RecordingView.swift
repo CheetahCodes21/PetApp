@@ -32,7 +32,7 @@ struct RecordingView: View {
 
     var body: some View {
         ZStack {
-            AppColor.surface.ignoresSafeArea()
+            AppColor.screenBackground.ignoresSafeArea()
 
             if recorder.micPermissionDenied {
                 permissionDeniedView
@@ -115,7 +115,7 @@ struct RecordingView: View {
     private var statusLabel: some View {
         switch recorder.phase {
         case .recording:
-            label("Recording", color: AppColor.purple)
+            label("Recording", color: AppColor.ninja)
         case .paused:
             label("Paused", color: AppColor.textSecondary)
         case .interrupted:
@@ -150,7 +150,7 @@ struct RecordingView: View {
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(AppColor.lavender.opacity(0.5))
+                    .fill(AppColor.thistle.opacity(0.5))
             )
     }
 
@@ -178,7 +178,7 @@ struct RecordingView: View {
                     UIApplication.shared.open(url)
                 }
             }
-            .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+            .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
             Button("Not now") { onCancel() }
                 .buttonStyle(OutlinedButtonStyle())
         }
@@ -196,13 +196,13 @@ struct RecordingView: View {
             } label: {
                 Label("Record", systemImage: "mic.fill")
             }
-            .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+            .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
             .disabled(recorder.phase == .preparing)
 
         case .recording:
             VStack(spacing: Spacing.sm) {
                 Button("Pause") { recorder.pause() }
-                    .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+                    .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
                 Button("Start over", role: .destructive) { showStartOverConfirm = true }
                     .buttonStyle(OutlinedButtonStyle())
             }
@@ -210,7 +210,7 @@ struct RecordingView: View {
         case .paused:
             VStack(spacing: Spacing.sm) {
                 Button("Continue recording") { recorder.resume() }
-                    .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+                    .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
                 if canSave {
                     Button("Save as a memory") { finishTapped() }
                         .buttonStyle(FilledButtonStyle(background: AppColor.success))
@@ -224,7 +224,7 @@ struct RecordingView: View {
         case .interrupted:
             VStack(spacing: Spacing.sm) {
                 Button("Resume") { recorder.resume() }
-                    .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+                    .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
                 if canSave {
                     Button("Save as a memory") { finishTapped() }
                         .buttonStyle(OutlinedButtonStyle())
@@ -302,7 +302,7 @@ struct LevelMeterView: View {
             HStack(spacing: 4) {
                 ForEach(0..<barCount, id: \.self) { index in
                     Capsule()
-                        .fill(isActive ? AppColor.purple : AppColor.textSecondary.opacity(0.3))
+                        .fill(isActive ? AppColor.ninja : AppColor.textSecondary.opacity(0.3))
                         .frame(height: barHeight(index: index, maxHeight: geo.size.height))
                 }
             }

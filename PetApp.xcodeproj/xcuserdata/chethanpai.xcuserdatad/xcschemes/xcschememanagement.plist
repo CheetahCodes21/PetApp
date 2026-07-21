@@ -9,6 +9,26 @@
 			<key>orderHint</key>
 			<integer>0</integer>
 		</dict>
+		<key>PetAppWidgetsExtension.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>310B2D8A300879A600B1894B</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>B7B741A7300DD30C00C914DC</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
 	</dict>
 </dict>
 </plist>

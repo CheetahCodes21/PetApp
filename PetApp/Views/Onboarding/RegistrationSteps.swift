@@ -206,7 +206,7 @@ struct GetStartedStep: View {
             Image(systemName: valid ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(valid ? .green : .gray)
 
-            Text(text)
+            Text(LocalizedStringKey(text))
                 .font(.caption)
                 .foregroundStyle(AppColor.textSecondary)
         }
@@ -257,10 +257,10 @@ struct PermissionsStep: View {
                 .frame(width: 40)
  
             VStack(alignment: .leading, spacing: 2) {
-                Text(permission.title)
+                Text(LocalizedStringKey(permission.title))
                     .font(.headline)
                     .foregroundStyle(AppColor.textPrimary)
-                Text(permission.explanation)
+                Text(LocalizedStringKey(permission.explanation))
                     .font(.body)
                     .foregroundStyle(AppColor.textSecondary)
             }
@@ -387,7 +387,7 @@ struct AccessibilityStep: View {
     }
  
     private func controlLabel(_ title: String) -> some View {
-        Text(title)
+        Text(LocalizedStringKey(title))
             .font(.title3.weight(.semibold))
             .foregroundStyle(AppColor.textPrimary)
     }
@@ -483,13 +483,13 @@ struct CompanionStep: View {
     }
  
     private func sectionLabel(_ text: String) -> some View {
-        Text(text)
+        Text(LocalizedStringKey(text))
             .font(.title3.weight(.semibold))
             .foregroundStyle(AppColor.textPrimary)
     }
  
     private func toggleLabel(_ text: String) -> some View {
-        Text(text)
+        Text(LocalizedStringKey(text))
             .font(.headline)
             .foregroundStyle(AppColor.textPrimary)
     }
@@ -582,7 +582,7 @@ private struct SegmentedTheme: View {
  
     private func seg(_ title: String, _ value: AppTheme) -> some View {
         Button { selection = value } label: {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.headline)
                 .foregroundStyle(selection == value ? AppColor.ninja : AppColor.textSecondary)
                 .padding(.vertical, Spacing.sm)

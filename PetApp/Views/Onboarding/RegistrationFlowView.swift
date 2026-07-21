@@ -36,7 +36,7 @@ struct RegistrationFlowView: View {
  
     var body: some View {
         ZStack {
-            AppColor.snow.ignoresSafeArea()
+            AppColor.screenBackground.ignoresSafeArea()
  
             content
                 .animation(.easeInOut(duration: 0.2), value: step)
@@ -151,11 +151,11 @@ struct StepScaffold<Content: View>: View {
                         .foregroundStyle(AppColor.textSecondary)
                 }
  
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(.largeTitle.weight(.bold))
                     .foregroundStyle(AppColor.textPrimary)
                 if let subtitle {
-                    Text(subtitle)
+                    Text(LocalizedStringKey(subtitle))
                         .font(.title3)
                         .foregroundStyle(AppColor.textSecondary)
                 }
