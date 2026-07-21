@@ -46,7 +46,7 @@ struct PhotoAttachmentView: View {
                     Label(image == nil ? "Choose from Library" : "Change from Library",
                           systemImage: "photo.on.rectangle")
                 }
-                .foregroundStyle(AppColor.purple)
+                .foregroundStyle(AppColor.ninja)
 
                 if cameraAvailable {
                     Button {
@@ -54,7 +54,7 @@ struct PhotoAttachmentView: View {
                     } label: {
                         Label("Take Photo", systemImage: "camera")
                     }
-                    .foregroundStyle(AppColor.purple)
+                    .foregroundStyle(AppColor.ninja)
                 }
 
                 if image != nil {
@@ -94,7 +94,7 @@ struct PhotoAttachmentView: View {
             if let url = URL(string: UIApplication.openSettingsURLString) {
                 Link("Open Settings", destination: url)
                     .font(.callout.weight(.semibold))
-                    .foregroundStyle(AppColor.purple)
+                    .foregroundStyle(AppColor.ninja)
             }
         }
     }
