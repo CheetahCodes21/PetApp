@@ -78,6 +78,7 @@ struct SignInView: View {
             }
         }
         .toolbarBackground(AppColor.lavender, for: .navigationBar)
+        .loadingOverlay(auth.isWorking, message: "Signing you in…")
     }
 }
 

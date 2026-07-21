@@ -267,11 +267,7 @@ struct AccessibilityStep: View {
                 labeled("Theme") {
                     SegmentedTheme(selection: $settings.theme)
                 }
-                Toggle(isOn: $settings.highContrast) {
-                    controlLabel("High contrast")
-                }
-                .tint(AppColor.purple)
- 
+
                 labeled("Voice speed") {
                     VStack(spacing: Spacing.sm) {
                         Slider(value: $settings.voiceSpeed, in: 0...1)
