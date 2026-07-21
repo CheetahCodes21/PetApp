@@ -13,11 +13,12 @@ struct ContentView: View {
     @StateObject private var auth = AuthViewModel()
     @StateObject private var settings = AppSettings()
     @StateObject private var companionStore = CompanionStore()
+    @StateObject private var memoryStore = MemoryStore()
 
     var body: some View {
         Group {
             if auth.isAuthenticated {
-                HomePlaceholderView()
+                MainTabView()
             } else {
                 AuthFlowView()
             }
@@ -25,6 +26,7 @@ struct ContentView: View {
         .environmentObject(auth)
         .environmentObject(settings)
         .environmentObject(companionStore)
+        .environmentObject(memoryStore)
         .preferredColorScheme(settings.theme.colorScheme)
         .dynamicTypeSize(settings.textSize.dynamicTypeSize)
         .environment(\.locale, settings.language.locale)
@@ -71,51 +73,6 @@ private struct AuthFlowView: View {
 
 /// Minimal signed-in landing so the flow has somewhere to arrive.
 /// Replaced later by the real home screen; hosts the Settings entry point.
-private struct HomePlaceholderView: View {
-    @EnvironmentObject private var auth: AuthViewModel
-    @EnvironmentObject private var settings: AppSettings
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                AppColor.surface.ignoresSafeArea()
-                VStack(spacing: Spacing.lg) {
-                    Text("🐤")
-                        .font(.system(size: 88))
-                    Text("Welcome, \(greetingName)!")
-                        .font(.largeTitle.weight(.bold))
-                        .foregroundStyle(AppColor.textPrimary)
-                    Text("Your home screen will live here.")
-                        .font(.title3)
-                        .foregroundStyle(AppColor.textSecondary)
-                    Button("Sign out", action: auth.signOut)
-                        .buttonStyle(OutlinedButtonStyle())
-                        .padding(.horizontal, Spacing.xxl)
-                        .padding(.top, Spacing.lg)
-                }
-                .padding()
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        SettingsView()
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                            .font(.title2)
-                            .foregroundStyle(AppColor.purple)
-                    }
-                    .accessibilityLabel("Settings")
-                }
-            }
-        }
-    }
-
-    private var greetingName: String {
-        if !settings.name.isEmpty { return settings.name }
-        return auth.firstName.isEmpty ? "friend" : auth.firstName
-    }
-}
-
 #Preview {
     ContentView()
 }

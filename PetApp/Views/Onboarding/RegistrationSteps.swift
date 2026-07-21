@@ -34,6 +34,7 @@ struct GetStartedStep: View {
         ) {
             if mode == .choose { chooseContent } else { emailContent }
         }
+        .loadingOverlay(working, message: "Setting things up…")
     }
 
     private var chooseContent: some View {
@@ -267,10 +268,6 @@ struct AccessibilityStep: View {
                 labeled("Theme") {
                     SegmentedTheme(selection: $settings.theme)
                 }
-                Toggle(isOn: $settings.highContrast) {
-                    controlLabel("High contrast")
-                }
-                .tint(AppColor.purple)
 
                 labeled("Voice speed") {
                     VStack(spacing: Spacing.sm) {

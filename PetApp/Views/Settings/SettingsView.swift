@@ -10,12 +10,16 @@
 import SwiftUI
 
 struct SettingsView: View {
+    var showsBack: Bool = true
+
     @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var auth: AuthViewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var editingName = false
     @State private var editingBirthday = false
     @State private var nameDraft = ""
+    @State private var confirmSignOut = false
 
     var body: some View {
         ZStack {
@@ -25,6 +29,12 @@ struct SettingsView: View {
                 VStack(spacing: Spacing.lg) {
                     header
                     card
+                    Button(role: .destructive) {
+                        confirmSignOut = true
+                    } label: {
+                        Text("Sign out")
+                    }
+                    .buttonStyle(OutlinedButtonStyle())
                 }
                 .padding(.horizontal, Spacing.lg)
                 .padding(.bottom, Spacing.xl)
@@ -32,15 +42,17 @@ struct SettingsView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(AppColor.purple)
+            if showsBack {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(AppColor.purple)
+                    }
+                    .accessibilityLabel("Back")
                 }
-                .accessibilityLabel("Back")
             }
         }
         .alert("My name", isPresented: $editingName) {
@@ -50,6 +62,13 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $editingBirthday) {
             BirthdayEditor(birthday: $settings.birthday)
+        }
+        .confirmationDialog("Sign out of MemoMe?",
+                            isPresented: $confirmSignOut, titleVisibility: .visible) {
+            Button("Sign out", role: .destructive) { auth.signOut() }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Your memories stay safely saved. You can sign back in anytime.")
         }
     }
 

@@ -8,6 +8,7 @@
 
 import SwiftUI
 import Combine
+import UIKit
 
 enum CompanionKind: String, Codable, CaseIterable, Identifiable {
     case pet, plant
@@ -107,12 +108,21 @@ struct CompanionProfile: Codable, Equatable {
 final class CompanionStore: ObservableObject {
     private let defaults = UserDefaults.standard
     private let key = "companion.profile"
+    private let fedKey = "companion.lastFedAt"
 
     @Published var profile: CompanionProfile? {
         didSet { persist() }
     }
 
+    /// When the companion was last fed. Drives the food bar decay.
+    @Published var lastFedAt: Date {
+        didSet { defaults.set(lastFedAt.timeIntervalSince1970, forKey: fedKey) }
+    }
+
     init() {
+        let storedFed = defaults.double(forKey: fedKey)
+        lastFedAt = storedFed > 0 ? Date(timeIntervalSince1970: storedFed) : Date()
+
         if let data = defaults.data(forKey: key),
            let decoded = try? JSONDecoder().decode(CompanionProfile.self, from: data) {
             profile = decoded
@@ -121,6 +131,29 @@ final class CompanionStore: ObservableObject {
 
     func save(_ profile: CompanionProfile) {
         self.profile = profile
+    }
+
+    // MARK: - Feeding
+
+    /// Feeding level 0...1 that decays over the care-frequency window.
+    /// One feed always resets it to full — no partial catch-up.
+    var feedingFraction: Double {
+        guard let days = profile?.careFrequencyDays, days > 0 else { return 1 }
+        let window = Double(days) * 86_400
+        let elapsed = Date().timeIntervalSince(lastFedAt)
+        return max(0, min(1, 1 - elapsed / window))
+    }
+
+    /// Number of filled hearts (out of 3) for the food bar.
+    var filledHearts: Int {
+        Int((feedingFraction * 3).rounded())
+    }
+
+    func feed() {
+        lastFedAt = Date()
+        if profile?.vibrateWhenFed == true {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
     }
 
     private func persist() {
