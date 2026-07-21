@@ -25,6 +25,31 @@ enum AppleSignInError: LocalizedError {
     }
 }
 
+/// Reads the `sub` claim out of an Apple identity token so the demo
+/// `app_users` table has a stable key for "this Apple account", without a
+/// server to verify the token against Apple. Fine for this test app; a real
+/// backend should verify the token's signature before trusting it.
+enum AppleIdentityToken {
+    static func subject(from idToken: String) -> String? {
+        payload(from: idToken)?["sub"] as? String
+    }
+
+    private static func payload(from idToken: String) -> [String: Any]? {
+        let segments = idToken.split(separator: ".")
+        guard segments.count > 1 else { return nil }
+
+        var base64 = String(segments[1])
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        while base64.count % 4 != 0 { base64.append("=") }
+
+        guard let data = Data(base64Encoded: base64),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+        return json
+    }
+}
+
 enum AppleNonce {
     /// A cryptographically-random nonce string.
     static func random(length: Int = 32) -> String {

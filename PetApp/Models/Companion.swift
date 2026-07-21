@@ -1,64 +1,60 @@
-//
-//  Companion.swift
-//  PetApp
-//
-//  The virtual companion the user chooses during onboarding.
-//  Each case maps to an image asset in Assets.xcassets.
-//
-
-import SwiftUI
-
-enum Companion: String, CaseIterable, Identifiable, Codable {
-    case kangaroo
-    case cat
-    case cow
-    case dog
-    case fox
-    case trex
-    case penguin
-    case goat
-    case flamingo
-    case squirrel
-    case toucan
-    case parrot
-
-    var id: String { rawValue }
-
-    /// Friendly name shown under each card and in copy.
-    var displayName: String {
-        switch self {
-        case .kangaroo: return "Kangaroo"
-        case .cat:      return "Cat"
-        case .cow:      return "Cow"
-        case .dog:      return "Dog"
-        case .fox:      return "Fox"
-        case .trex:     return "T-Rex"
-        case .penguin:  return "Penguin"
-        case .goat:     return "Goat"
-        case .flamingo: return "Flamingo"
-        case .squirrel: return "Squirrel"
-        case .toucan:   return "Toucan"
-        case .parrot:   return "Parrot"
-        }
+import Foundation
+import SwiftData
+ 
+/// The user's pet or plant companion (onboarding Step 3, edit, and replace flows).
+/// Kind and colour are the only customisation axes per spec — one pet design and
+/// one plant design, each recolourable. Uses the shared `CompanionKind` enum
+/// defined in CompanionProfile.swift rather than redeclaring it here.
+@Model
+final class Companion {
+    var id: String
+    var kind: CompanionKind
+    var colorVariant: String   // CompanionColorOption.rawValue, e.g. "purple" — used to build Lottie file names
+    var name: String
+ 
+    /// Plain-language interval, e.g. "Once a day", "Every two days" — never a raw number.
+    var careFrequencyLabel: String
+    var becomesUnwellIfNotFed: Bool
+    var vibrateWhenFed: Bool
+ 
+    var currentHungerState: String   // "good", "hungry", "veryHungry"
+    var isUnwell: Bool
+    var streakCount: Int
+    var lastFedAt: Date?
+    var createdAt: Date
+ 
+    var owner: User?
+ 
+    @Relationship(deleteRule: .cascade, inverse: \Memory.companion)
+    var memories: [Memory] = []
+ 
+    init(
+        id: String = UUID().uuidString,
+        kind: CompanionKind,
+        colorVariant: String,
+        name: String,
+        careFrequencyLabel: String,
+        becomesUnwellIfNotFed: Bool,
+        vibrateWhenFed: Bool,
+        currentHungerState: String = "good",
+        isUnwell: Bool = false,
+        streakCount: Int = 0,
+        lastFedAt: Date? = nil,
+        createdAt: Date = .now,
+        owner: User? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.colorVariant = colorVariant
+        self.name = name
+        self.careFrequencyLabel = careFrequencyLabel
+        self.becomesUnwellIfNotFed = becomesUnwellIfNotFed
+        self.vibrateWhenFed = vibrateWhenFed
+        self.currentHungerState = currentHungerState
+        self.isUnwell = isUnwell
+        self.streakCount = streakCount
+        self.lastFedAt = lastFedAt
+        self.createdAt = createdAt
+        self.owner = owner
     }
-
-    /// Exact asset-catalog name for this companion's artwork.
-    var assetName: String {
-        switch self {
-        case .kangaroo: return "Aussie Kangaroo"
-        case .cat:      return "cat1"
-        case .cow:      return "cow1"
-        case .dog:      return "dog1"
-        case .fox:      return "Fox"
-        case .trex:     return "Fun T-rex"
-        case .penguin:  return "Panguine"
-        case .goat:     return "Ram:Goat1"
-        case .flamingo: return "Siberrian Fleminfo"
-        case .squirrel: return "Squirel gilleri"
-        case .toucan:   return "toco toucan"
-        case .parrot:   return "Toto Parrot"
-        }
-    }
-
-    var image: Image { Image(assetName) }
 }
