@@ -36,13 +36,13 @@ struct PrivacyDisclosureView: View {
                             onAcknowledge?()
                             dismiss()
                         }
-                        .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+                        .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
                         .padding(.top, Spacing.md)
                     }
                 }
                 .padding(Spacing.lg)
             }
-            .background(AppColor.surface.ignoresSafeArea())
+            .background(AppColor.snow.ignoresSafeArea())
             .toolbar {
                 if onAcknowledge == nil {
                     ToolbarItem(placement: .topBarTrailing) {
