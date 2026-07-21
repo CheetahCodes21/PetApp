@@ -6,32 +6,32 @@
 //  companion display, the daily prompt, a feed button, and tap-to-record.
 //  Reads the persisted SwiftData `Companion` and `Memory` models.
 //
-
+ 
 import SwiftUI
 import SwiftData
 import UIKit
-
+ 
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var settings: AppSettings
     @Query private var companions: [Companion]
     @Query private var allMemories: [Memory]
-
+ 
     @State private var promptIndex = DailyPrompts.todayIndex
     @State private var showRecording = false
     @State private var showEditCompanion = false
-
+ 
     private let amber = Color(hex: "#F7C873")
     private let amberSoft = Color(hex: "#FBE6BE")
     private let amberText = Color(hex: "#C77A22")
     private let heart = Color(hex: "#E0555F")
-
+ 
     private var companion: Companion? { companions.first }
-
+ 
     var body: some View {
         ZStack {
             AppColor.screenBackground.ignoresSafeArea()
-
+ 
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.lg) {
                     header
@@ -50,6 +50,12 @@ struct HomeView: View {
                 EditCompanionSheet(companion: companion)
             }
         }
+        .memoryRecorder(isPresented: $showRecording, question: DailyPrompts.all[promptIndex]) { saved in
+            try? saved.persist(in: modelContext, companion: companion)
+        }
+        .recordingRecovery { saved in
+            try? saved.persist(in: modelContext, companion: companion)
+        }
         .task {
             ensureCompanion()
             syncWidget()
@@ -57,7 +63,7 @@ struct HomeView: View {
         .onChange(of: companions.count) { _, _ in syncWidget() }
         .onChange(of: allMemories.count) { _, _ in syncWidget() }
     }
-
+ 
     /// Guarantees there's a companion to show and edit. If onboarding never
     /// created one on this device (e.g. an existing user just signed in),
     /// seed a sensible default the user can then edit.
@@ -74,9 +80,9 @@ struct HomeView: View {
         modelContext.insert(seeded)
         try? modelContext.save()
     }
-
+ 
     // MARK: - Header
-
+ 
     private var header: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             Text("Welcome back!")
@@ -88,16 +94,16 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-
+ 
     private var monthYear: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "d MMMM yyyy"
         formatter.locale = Locale(identifier: "en_US")
         return formatter.string(from: Date())
     }
-
+ 
     // MARK: - Stat cards (food bar + memory streak)
-
+ 
     private var statCards: some View {
         HStack(spacing: Spacing.md) {
             statCard(background: AppColor.ninja.opacity(0.14)) {
@@ -116,7 +122,7 @@ struct HomeView: View {
                 }
             }
             .accessibilityLabel("Food bar, \(filledHearts) of 3")
-
+ 
             statCard(background: amberSoft) {
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     icon("flame.fill", tint: amberText, bg: amber.opacity(0.4))
@@ -131,7 +137,7 @@ struct HomeView: View {
             .accessibilityLabel("Memory streak, \(streakDays) days")
         }
     }
-
+ 
     private var filledHearts: Int {
         switch companion?.currentHungerState {
         case "hungry":     return 2
@@ -140,9 +146,9 @@ struct HomeView: View {
         default:           return 3
         }
     }
-
+ 
     private var streakDays: Int { companion?.streakCount ?? 0 }
-
+ 
     private func statCard<Content: View>(background: Color,
                                          @ViewBuilder _ content: () -> Content) -> some View {
         content()
@@ -150,7 +156,7 @@ struct HomeView: View {
             .padding(Spacing.md)
             .background(background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
-
+ 
     private func icon(_ system: String, tint: Color, bg: Color? = nil) -> some View {
         Image(systemName: system)
             .font(.headline)
@@ -158,9 +164,9 @@ struct HomeView: View {
             .frame(width: 36, height: 36)
             .background((bg ?? Color.white.opacity(0.7)), in: Circle())
     }
-
+ 
     // MARK: - Companion display
-
+ 
     private var companionCard: some View {
         ZStack(alignment: .topTrailing) {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
@@ -169,11 +175,11 @@ struct HomeView: View {
                     RoundedRectangle(cornerRadius: 28)
                         .stroke(companionColor.opacity(0.35), lineWidth: 2)
                 )
-
+ 
             companionArt
                 .frame(maxWidth: .infinity)
                 .frame(height: 220)
-
+ 
             if companion != nil {
                 Button {
                     showEditCompanion = true
@@ -191,7 +197,7 @@ struct HomeView: View {
         }
         .frame(height: 240)
     }
-
+ 
     @ViewBuilder
     private var companionArt: some View {
         if let companion {
@@ -209,7 +215,7 @@ struct HomeView: View {
             Text("🐣").font(.system(size: 120))
         }
     }
-
+ 
     private var companionColor: Color {
         guard let variant = companion?.colorVariant,
               let option = CompanionColorOption(rawValue: variant) else {
@@ -217,9 +223,9 @@ struct HomeView: View {
         }
         return option.color
     }
-
+ 
     // MARK: - Prompt row (feed + question + refresh)
-
+ 
     private var promptRow: some View {
         HStack(spacing: Spacing.md) {
             VStack(spacing: 4) {
@@ -237,7 +243,7 @@ struct HomeView: View {
                     .font(.caption)
                     .foregroundStyle(AppColor.textSecondary)
             }
-
+ 
             Text(LocalizedStringKey(DailyPrompts.all[promptIndex]))
                 .font(.headline)
                 .foregroundStyle(AppColor.textPrimary)
@@ -248,7 +254,7 @@ struct HomeView: View {
                     RoundedRectangle(cornerRadius: 18)
                         .stroke(AppColor.textSecondary.opacity(0.15), lineWidth: 1)
                 )
-
+ 
             Button {
                 withAnimation {
                     promptIndex = (promptIndex + 1) % DailyPrompts.all.count
@@ -262,7 +268,7 @@ struct HomeView: View {
             .accessibilityLabel("New question")
         }
     }
-
+ 
     private func feed() {
         guard let companion else { return }
         companion.lastFedAt = Date()
@@ -273,13 +279,13 @@ struct HomeView: View {
         }
         syncWidget()
     }
-
+ 
     private func syncWidget() {
         WidgetSync.update(companion: companion, name: settings.name, memories: allMemories)
     }
-
+ 
     // MARK: - Record
-
+ 
     private var recordButton: some View {
         VStack(spacing: Spacing.sm) {
             Button {
@@ -301,20 +307,20 @@ struct HomeView: View {
         .padding(.top, Spacing.sm)
     }
 }
-
+ 
 // MARK: - Edit companion sheet
-
+ 
 private struct EditCompanionSheet: View {
     let companion: Companion
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-
+ 
     @State private var name = ""
     @State private var kind: CompanionKind = .pet
     @State private var petSpecies: PetSpecies = .default
     @State private var plantSpecies: PlantSpecies = .default
     @State private var colorVariant = CompanionColorOption.default.rawValue
-
+ 
     var body: some View {
         NavigationStack {
             ZStack {
@@ -322,9 +328,9 @@ private struct EditCompanionSheet: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Spacing.lg) {
                         companionPreview
-
+ 
                         LabeledField(label: "Companion name", text: $name)
-
+ 
                         VStack(alignment: .leading, spacing: Spacing.xs) {
                             Text("Type")
                                 .font(.headline)
@@ -336,14 +342,14 @@ private struct EditCompanionSheet: View {
                             }
                             .pickerStyle(.segmented)
                         }
-
+ 
                         VStack(alignment: .leading, spacing: Spacing.xs) {
                             Text(kind == .pet ? "Choose your pet" : "Choose your plant")
                                 .font(.headline)
                                 .foregroundStyle(AppColor.textPrimary)
                             speciesPicker
                         }
-
+ 
                         VStack(alignment: .leading, spacing: Spacing.xs) {
                             Text("Colour")
                                 .font(.headline)
@@ -363,7 +369,7 @@ private struct EditCompanionSheet: View {
                                 }
                             }
                         }
-
+ 
                         // Age — read-only (how old the companion is).
                         HStack {
                             Text("Age")
@@ -403,11 +409,11 @@ private struct EditCompanionSheet: View {
             }
         }
     }
-
+ 
     private var previewColor: Color {
         (CompanionColorOption(rawValue: colorVariant) ?? .default).color
     }
-
+ 
     /// Live preview that updates as the user changes type / colour.
     private var companionPreview: some View {
         ZStack {
@@ -417,7 +423,7 @@ private struct EditCompanionSheet: View {
             Circle()
                 .stroke(previewColor, lineWidth: 4)
                 .frame(width: 150, height: 150)
-
+ 
             Group {
                 switch kind {
                 case .pet:
@@ -433,7 +439,7 @@ private struct EditCompanionSheet: View {
         .frame(maxWidth: .infinity)
         .accessibilityHidden(true)
     }
-
+ 
     @ViewBuilder
     private var speciesPicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -461,7 +467,7 @@ private struct EditCompanionSheet: View {
             .padding(.vertical, 4)
         }
     }
-
+ 
     private func speciesCell<Art: View>(name: String,
                                         isSelected: Bool,
                                         @ViewBuilder art: () -> Art,
@@ -486,7 +492,7 @@ private struct EditCompanionSheet: View {
         .accessibilityLabel(name)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
-
+ 
     private var ageText: String {
         let days = Calendar.current.dateComponents([.day],
                                                    from: companion.createdAt,
@@ -497,7 +503,7 @@ private struct EditCompanionSheet: View {
         default:    return "\(days) days old"
         }
     }
-
+ 
     private func save() {
         companion.name = name
         companion.kind = kind
@@ -508,8 +514,9 @@ private struct EditCompanionSheet: View {
         dismiss()
     }
 }
-
+ 
 #Preview {
     HomeView()
         .modelContainer(for: [Companion.self, Memory.self, User.self], inMemory: true)
 }
+ 
