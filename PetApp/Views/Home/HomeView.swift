@@ -17,7 +17,7 @@ struct HomeView: View {
     @Query private var allMemories: [Memory]
 
     @State private var promptIndex = DailyPrompts.todayIndex
-    @State private var showRecordSoon = false
+    @State private var showRecording = false
     @State private var showEditCompanion = false
 
     private let amber = Color(hex: "#F7C873")
@@ -43,11 +43,6 @@ struct HomeView: View {
                 .padding(.top, Spacing.sm)
                 .padding(.bottom, Spacing.xl)
             }
-        }
-        .alert("Recording coming soon", isPresented: $showRecordSoon) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("The voice recording flow is on its way. You'll be able to tap and speak your memory here.")
         }
         .sheet(isPresented: $showEditCompanion) {
             if let companion {
@@ -277,7 +272,7 @@ struct HomeView: View {
     private var recordButton: some View {
         VStack(spacing: Spacing.sm) {
             Button {
-                showRecordSoon = true
+                showRecording = true
             } label: {
                 Image(systemName: "mic.fill")
                     .font(.system(size: 44))
