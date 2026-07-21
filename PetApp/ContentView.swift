@@ -29,6 +29,20 @@ struct ContentView: View {
         .dynamicTypeSize(settings.textSize.dynamicTypeSize)
         .environment(\.locale, settings.language.locale)
         .animation(.easeInOut, value: auth.isAuthenticated)
+        .onOpenURL { url in
+            // Handles taps on the Lock Screen widget, which sets
+            // widgetURL(petapp://feed) or petapp://question.
+            guard url.scheme == "petapp" else { return }
+            switch url.host {
+            case "feed":
+                Task { await LiveActivityManager.feed() }
+            case "question":
+                // TODO: route to the daily-question screen once it exists.
+                break
+            default:
+                break
+            }
+        }
     }
 }
 

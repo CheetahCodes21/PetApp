@@ -9,16 +9,75 @@
 /* Begin PBXBuildFile section */
 		AA0000000000000000000001 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000002 /* Lottie */; };
 		AA0000000000000000000011 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000012 /* Supabase */; };
+		B7B741AB300DD30C00C914DC /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B7B741AA300DD30C00C914DC /* WidgetKit.framework */; };
+		B7B741AD300DD30C00C914DC /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B7B741AC300DD30C00C914DC /* SwiftUI.framework */; };
+		B7B741BC300DD30C00C914DC /* PetAppWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B7B741A8300DD30C00C914DC /* PetAppWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B7B741BA300DD30C00C914DC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 310B2D83300879A600B1894B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B7B741A7300DD30C00C914DC;
+			remoteInfo = PetAppWidgetsExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B7B741BD300DD30C00C914DC /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B7B741BC300DD30C00C914DC /* PetAppWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		310B2D8B300879A600B1894B /* PetApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PetApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B7B741A8300DD30C00C914DC /* PetAppWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PetAppWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B7B741AA300DD30C00C914DC /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		B7B741AC300DD30C00C914DC /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B7B4E89B300EF4BA00628253 /* Exceptions for "PetApp" folder in "PetAppWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/FeedActivityAttributes.swift,
+				Models/WidgetSharedModels.swift,
+			);
+			target = B7B741A7300DD30C00C914DC /* PetAppWidgetsExtension */;
+		};
+		B7B741C0300DD30C00C914DC /* Exceptions for "PetAppWidgets" folder in "PetAppWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B7B741A7300DD30C00C914DC /* PetAppWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		310B2D8D300879A600B1894B /* PetApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B7B4E89B300EF4BA00628253 /* Exceptions for "PetApp" folder in "PetAppWidgetsExtension" target */,
+			);
 			path = PetApp;
+			sourceTree = "<group>";
+		};
+		B7B741AE300DD30C00C914DC /* PetAppWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B7B741C0300DD30C00C914DC /* Exceptions for "PetAppWidgets" folder in "PetAppWidgetsExtension" target */,
+			);
+			path = PetAppWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -33,6 +92,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B7B741A5300DD30C00C914DC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B7B741AD300DD30C00C914DC /* SwiftUI.framework in Frameworks */,
+				B7B741AB300DD30C00C914DC /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -40,6 +108,8 @@
 			isa = PBXGroup;
 			children = (
 				310B2D8D300879A600B1894B /* PetApp */,
+				B7B741AE300DD30C00C914DC /* PetAppWidgets */,
+				B7B741A9300DD30C00C914DC /* Frameworks */,
 				310B2D8C300879A600B1894B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -48,8 +118,18 @@
 			isa = PBXGroup;
 			children = (
 				310B2D8B300879A600B1894B /* PetApp.app */,
+				B7B741A8300DD30C00C914DC /* PetAppWidgetsExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		B7B741A9300DD30C00C914DC /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				B7B741AA300DD30C00C914DC /* WidgetKit.framework */,
+				B7B741AC300DD30C00C914DC /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -62,10 +142,12 @@
 				310B2D87300879A600B1894B /* Sources */,
 				310B2D88300879A600B1894B /* Frameworks */,
 				310B2D89300879A600B1894B /* Resources */,
+				B7B741BD300DD30C00C914DC /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B7B741BB300DD30C00C914DC /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				310B2D8D300879A600B1894B /* PetApp */,
@@ -79,6 +161,28 @@
 			productReference = 310B2D8B300879A600B1894B /* PetApp.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B7B741A7300DD30C00C914DC /* PetAppWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B7B741C1300DD30C00C914DC /* Build configuration list for PBXNativeTarget "PetAppWidgetsExtension" */;
+			buildPhases = (
+				B7B741A4300DD30C00C914DC /* Sources */,
+				B7B741A5300DD30C00C914DC /* Frameworks */,
+				B7B741A6300DD30C00C914DC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B7B741AE300DD30C00C914DC /* PetAppWidgets */,
+			);
+			name = PetAppWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = PetAppWidgetsExtension;
+			productReference = B7B741A8300DD30C00C914DC /* PetAppWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -91,6 +195,10 @@
 				TargetAttributes = {
 					310B2D8A300879A600B1894B = {
 						CreatedOnToolsVersion = 26.6;
+					};
+					B7B741A7300DD30C00C914DC = {
+						CreatedOnToolsVersion = 26.6;
+						LastSwiftMigration = 2660;
 					};
 				};
 			};
@@ -113,12 +221,20 @@
 			projectRoot = "";
 			targets = (
 				310B2D8A300879A600B1894B /* PetApp */,
+				B7B741A7300DD30C00C914DC /* PetAppWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		310B2D89300879A600B1894B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B7B741A6300DD30C00C914DC /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -135,7 +251,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B7B741A4300DD30C00C914DC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B7B741BB300DD30C00C914DC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B7B741A7300DD30C00C914DC /* PetAppWidgetsExtension */;
+			targetProxy = B7B741BA300DD30C00C914DC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		310B2D94300879A800B1894B /* Debug */ = {
@@ -343,6 +474,71 @@
 			};
 			name = Release;
 		};
+		B7B741BE300DD30C00C914DC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KA9B9V699F;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PetAppWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PetAppWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.AppleFoundationProgram.PetApp.PetAppWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B7B741BF300DD30C00C914DC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KA9B9V699F;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PetAppWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PetAppWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.AppleFoundationProgram.PetApp.PetAppWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -360,6 +556,15 @@
 			buildConfigurations = (
 				310B2D97300879A800B1894B /* Debug */,
 				310B2D98300879A800B1894B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B7B741C1300DD30C00C914DC /* Build configuration list for PBXNativeTarget "PetAppWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B7B741BE300DD30C00C914DC /* Debug */,
+				B7B741BF300DD30C00C914DC /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
