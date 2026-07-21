@@ -29,7 +29,7 @@ struct HomeView: View {
 
     var body: some View {
         ZStack {
-            AppColor.surface.ignoresSafeArea()
+            AppColor.snow.ignoresSafeArea()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.lg) {
@@ -94,9 +94,9 @@ struct HomeView: View {
 
     private var statCards: some View {
         HStack(spacing: Spacing.md) {
-            statCard(background: AppColor.purple.opacity(0.14)) {
+            statCard(background: AppColor.ninja.opacity(0.14)) {
                 VStack(alignment: .leading, spacing: Spacing.sm) {
-                    icon("face.smiling", tint: AppColor.purple)
+                    icon("face.smiling", tint: AppColor.ninja)
                     Text("Food bar")
                         .font(.headline)
                         .foregroundStyle(AppColor.textPrimary)
@@ -207,7 +207,7 @@ struct HomeView: View {
     private var companionColor: Color {
         guard let variant = companion?.colorVariant,
               let option = CompanionColorOption(rawValue: variant) else {
-            return AppColor.purple
+            return AppColor.ninja
         }
         return option.color
     }
@@ -224,7 +224,7 @@ struct HomeView: View {
                         .font(.title2)
                         .foregroundStyle(.white)
                         .frame(width: 60, height: 60)
-                        .background(AppColor.purple, in: Circle())
+                        .background(AppColor.ninja, in: Circle())
                 }
                 .accessibilityLabel("Feed companion")
                 Text("feed")
@@ -278,8 +278,8 @@ struct HomeView: View {
                     .font(.system(size: 44))
                     .foregroundStyle(.white)
                     .frame(width: 120, height: 120)
-                    .background(AppColor.plum, in: Circle())
-                    .shadow(color: AppColor.plum.opacity(0.3), radius: 10, y: 4)
+                    .background(AppColor.blackberry, in: Circle())
+                    .shadow(color: AppColor.blackberry.opacity(0.3), radius: 10, y: 4)
             }
             .accessibilityLabel("Tap to record a memory")
             Text("tap to record")
@@ -307,7 +307,7 @@ private struct EditCompanionSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppColor.surface.ignoresSafeArea()
+                AppColor.snow.ignoresSafeArea()
                 ScrollView {
                     VStack(alignment: .leading, spacing: Spacing.lg) {
                         companionPreview
@@ -365,7 +365,7 @@ private struct EditCompanionSheet: View {
                         }
                         .padding(Spacing.md)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(AppColor.purple.opacity(0.1),
+                        .background(AppColor.ninja.opacity(0.1),
                                     in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Age, \(ageText)")

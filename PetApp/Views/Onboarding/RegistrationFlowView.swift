@@ -36,7 +36,7 @@ struct RegistrationFlowView: View {
  
     var body: some View {
         ZStack {
-            AppColor.surface.ignoresSafeArea()
+            AppColor.snow.ignoresSafeArea()
  
             content
                 .animation(.easeInOut(duration: 0.2), value: step)
@@ -138,7 +138,7 @@ struct StepScaffold<Content: View>: View {
                     Button(action: onBack) {
                         Image(systemName: "chevron.left")
                             .font(.title2.weight(.semibold))
-                            .foregroundStyle(AppColor.purple)
+                            .foregroundStyle(AppColor.ninja)
                     }
                     .accessibilityLabel("Back")
                     Spacer()
@@ -172,7 +172,7 @@ struct StepScaffold<Content: View>: View {
  
             if let primaryTitle, let onPrimary {
                 Button(action: onPrimary) { Text(primaryTitle) }
-                    .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+                    .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
                     .disabled(!primaryEnabled)
                     .opacity(primaryEnabled ? 1 : 0.5)
                     .padding(.horizontal, Spacing.lg)

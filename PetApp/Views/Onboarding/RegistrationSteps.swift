@@ -19,6 +19,10 @@ struct GetStartedStep: View {
     @State private var mode: Mode = .choose
     @State private var email = ""
     @State private var password = ""
+    @State private var confirmPassword = ""
+
+    private let passwordRegex =
+    "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-={}\\[\\]|:;\"'<>,.?/~`]).{8,}$"
     @State private var working = false
     @State private var error: String?
  
@@ -56,7 +60,7 @@ struct GetStartedStep: View {
                     .multilineTextAlignment(.center)
             }
  
-            Text("You can change any of these details later.")
+            Text("You can change these details later.")
                 .font(.subheadline)
                 .foregroundStyle(AppColor.textSecondary)
                 .multilineTextAlignment(.center)
@@ -70,9 +74,32 @@ struct GetStartedStep: View {
                          textContentType: .emailAddress)
             LabeledField(label: "Password", text: $password,
                          isSecure: true, textContentType: .newPassword)
-            Text("At least 6 characters.")
-                .font(.subheadline)
-                .foregroundStyle(AppColor.textSecondary)
+            LabeledField(
+                label: "Confirm Password",
+                text: $confirmPassword,
+                isSecure: true,
+                textContentType: .newPassword
+            )
+            
+            VStack(alignment: .leading, spacing: 6) {
+
+                validationRow(password.count >= 8,
+                              "At least 8 characters")
+
+                validationRow(password.range(of: "[A-Z]", options: .regularExpression) != nil,
+                              "One uppercase letter")
+
+                validationRow(password.range(of: "[a-z]", options: .regularExpression) != nil,
+                              "One lowercase letter")
+
+                validationRow(password.range(of: "[0-9]", options: .regularExpression) != nil,
+                              "One number")
+
+                validationRow(password.range(of: "[^A-Za-z0-9]", options: .regularExpression) != nil,
+                              "One special character")
+
+            }
+            .font(.subheadline)
  
             if let error {
                 Text(error).font(.subheadline).foregroundStyle(.red)
@@ -85,24 +112,50 @@ struct GetStartedStep: View {
                     Text("Create account")
                 }
             }
-            .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+            .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
             .disabled(!canSubmit || working)
             .opacity(canSubmit ? 1 : 0.5)
         }
     }
  
-    private var canSubmit: Bool {
-        email.contains("@") && password.count >= 6
-    }
- 
     private func createAccount() {
+
+        guard isValidEmail else {
+            error = "Please enter a valid email address."
+            return
+        }
+
+        guard isValidPassword else {
+            error = """
+    Password must contain:
+    • At least 8 characters
+    • One uppercase letter
+    • One lowercase letter
+    • One number
+    • One special character
+    """
+            return
+        }
+
+        guard password == confirmPassword else {
+            error = "Passwords do not match."
+            return
+        }
+
         working = true
         error = nil
+
         Task {
             do {
-                try await auth.signUpWithEmail(email: email, password: password, fullName: fullName)
+                try await auth.signUpWithEmail(
+                    email: email,
+                    password: password,
+                    fullName: fullName
+                )
+
                 working = false
                 onNext()
+
             } catch {
                 working = false
                 self.error = (error as? LocalizedError)?.errorDescription
@@ -128,6 +181,34 @@ struct GetStartedStep: View {
             }
         case .failure:
             break
+        }
+    }
+    private var isValidEmail: Bool {
+        let regex = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+        return NSPredicate(format: "SELF MATCHES %@", regex)
+            .evaluate(with: email)
+    }
+
+    private var isValidPassword: Bool {
+        NSPredicate(format: "SELF MATCHES %@", passwordRegex)
+            .evaluate(with: password)
+    }
+
+    private var canSubmit: Bool {
+        isValidEmail &&
+        isValidPassword &&
+        password == confirmPassword
+    }
+    
+    @ViewBuilder
+    private func validationRow(_ valid: Bool, _ text: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: valid ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(valid ? .green : .gray)
+
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(AppColor.textSecondary)
         }
     }
 }
@@ -161,7 +242,7 @@ struct PermissionsStep: View {
                 } label: {
                     Text(requesting ? "Requesting…" : "Allow access")
                 }
-                .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+                .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
                 .disabled(requesting)
                 .padding(.top, Spacing.xs)
             }
@@ -172,7 +253,7 @@ struct PermissionsStep: View {
         HStack(alignment: .top, spacing: Spacing.md) {
             Image(systemName: permission.systemImage)
                 .font(.title2)
-                .foregroundStyle(AppColor.purple)
+                .foregroundStyle(AppColor.ninja)
                 .frame(width: 40)
  
             VStack(alignment: .leading, spacing: 2) {
@@ -271,7 +352,7 @@ struct AccessibilityStep: View {
                 labeled("Voice speed") {
                     VStack(spacing: Spacing.sm) {
                         Slider(value: $settings.voiceSpeed, in: 0...1)
-                            .tint(AppColor.purple)
+                            .tint(AppColor.ninja)
                         Button {
                             SpeechService.shared.speak(
                                 "Hello, this is how I will read your memories.",
@@ -280,7 +361,7 @@ struct AccessibilityStep: View {
                         } label: {
                             Label("Test voice", systemImage: "speaker.wave.2.fill")
                                 .font(.headline)
-                                .foregroundStyle(AppColor.purple)
+                                .foregroundStyle(AppColor.ninja)
                         }
                     }
                 }
@@ -292,7 +373,7 @@ struct AccessibilityStep: View {
                 Toggle(isOn: $settings.textToVoice) {
                     controlLabel("Text-to-voice")
                 }
-                .tint(AppColor.purple)
+                .tint(AppColor.ninja)
             }
         }
     }
@@ -349,17 +430,17 @@ struct CompanionStep: View {
                     ),
                     in: 1...15, step: 1
                 )
-                .tint(AppColor.purple)
+                .tint(AppColor.ninja)
  
                 Toggle(isOn: $profile.sickIfNotFed) {
                     toggleLabel("Show as sick if not fed in time")
                 }
-                .tint(AppColor.purple)
+                .tint(AppColor.ninja)
  
                 Toggle(isOn: $profile.vibrateWhenFed) {
                     toggleLabel("Vibrate phone when fed")
                 }
-                .tint(AppColor.purple)
+                .tint(AppColor.ninja)
             }
         }
     }
@@ -439,10 +520,10 @@ struct WelcomePopup: View {
                     .foregroundStyle(AppColor.textSecondary)
  
                 Button("Let's go", action: onFinish)
-                    .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+                    .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
             }
             .padding(Spacing.xl)
-            .background(AppColor.surface,
+            .background(AppColor.snow,
                         in: RoundedRectangle(cornerRadius: 28, style: .continuous))
             .padding(.horizontal, Spacing.xl)
         }
@@ -469,7 +550,7 @@ private struct FontSizePicker: View {
             cell(.medium, size: 19)
             cell(.large, size: 24)
         }
-        .background(AppColor.purple.opacity(0.12),
+        .background(AppColor.ninja.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
  
@@ -481,7 +562,7 @@ private struct FontSizePicker: View {
                 .frame(width: 44, height: 44)
                 .background(
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(selection == value ? AppColor.purple : .clear)
+                        .fill(selection == value ? AppColor.ninja : .clear)
                 )
         }
     }
@@ -495,7 +576,7 @@ private struct SegmentedTheme: View {
             seg("Light", .light)
             seg("Dark", .dark)
         }
-        .background(AppColor.purple.opacity(0.12),
+        .background(AppColor.ninja.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
  
@@ -503,7 +584,7 @@ private struct SegmentedTheme: View {
         Button { selection = value } label: {
             Text(title)
                 .font(.headline)
-                .foregroundStyle(selection == value ? AppColor.purple : AppColor.textSecondary)
+                .foregroundStyle(selection == value ? AppColor.ninja : AppColor.textSecondary)
                 .padding(.vertical, Spacing.sm)
                 .frame(width: 70)
                 .background(
@@ -528,12 +609,12 @@ private struct SegmentedKind: View {
                         .padding(.vertical, Spacing.md)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(selection == kind ? AppColor.purple : .clear)
+                                .fill(selection == kind ? AppColor.ninja : .clear)
                         )
                 }
             }
         }
-        .background(AppColor.purple.opacity(0.12),
+        .background(AppColor.ninja.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }

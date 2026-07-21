@@ -24,7 +24,7 @@ struct LoadingOverlay: View {
                 ZStack {
                     // Soft glowing aura behind the animation.
                     Circle()
-                        .fill(AppColor.purple.opacity(0.3))
+                        .fill(AppColor.ninja.opacity(0.3))
                         .frame(width: 200, height: 200)
                         .blur(radius: 45)
                         .scaleEffect(pulse ? 1.12 : 0.9)
@@ -48,12 +48,12 @@ struct LoadingOverlay: View {
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
                     .stroke(
                         LinearGradient(
-                            colors: [AppColor.purple.opacity(0.55), AppColor.purple.opacity(0.05)],
+                            colors: [AppColor.ninja.opacity(0.55), AppColor.ninja.opacity(0.05)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing),
                         lineWidth: 1)
             )
-            .shadow(color: AppColor.purple.opacity(0.28), radius: 28, y: 12)
+            .shadow(color: AppColor.ninja.opacity(0.28), radius: 28, y: 12)
             .padding(.horizontal, Spacing.xl)
         }
         .onAppear {

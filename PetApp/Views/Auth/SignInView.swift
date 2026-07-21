@@ -12,7 +12,7 @@ struct SignInView: View {
 
     var body: some View {
         ZStack {
-            AppColor.lavender.ignoresSafeArea()
+            AppColor.thistle.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 Text("Log into account")
@@ -24,7 +24,7 @@ struct SignInView: View {
 
                 Text("Sign In")
                     .font(.system(size: 44, weight: .heavy))
-                    .foregroundStyle(AppColor.plum)
+                    .foregroundStyle(AppColor.blackberry)
                     .padding(.bottom, Spacing.lg)
 
                 VStack(spacing: Spacing.md) {
@@ -53,11 +53,12 @@ struct SignInView: View {
                         Text("Next")
                     }
                 }
-                .buttonStyle(FilledButtonStyle(background: AppColor.plum))
+                .buttonStyle(FilledButtonStyle(background: AppColor.blackberry))
                 .frame(width: 200)
                 .padding(.top, Spacing.lg)
                 .disabled(!auth.canSubmitSignIn || auth.isWorking)
-                .opacity(auth.canSubmitSignIn ? 1 : 0.5)
+                .opacity(auth.canSubmitSignIn ? 1 : 0.45)
+                .animation(.easeInOut(duration: 0.2), value: auth.canSubmitSignIn)
 
                 Button("Forgot password?") { }
                     .font(.subheadline.weight(.semibold))
@@ -77,7 +78,7 @@ struct SignInView: View {
                     .padding(.bottom, Spacing.lg)
             }
         }
-        .toolbarBackground(AppColor.lavender, for: .navigationBar)
+        .toolbarBackground(AppColor.thistle, for: .navigationBar)
         .loadingOverlay(auth.isWorking, message: "Signing you in…")
     }
 }

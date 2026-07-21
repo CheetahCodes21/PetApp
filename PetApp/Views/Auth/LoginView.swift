@@ -17,93 +17,192 @@ struct LoginView: View {
 
     var body: some View {
         ZStack {
-            AppColor.lavender.ignoresSafeArea()
+            AppColor.snow
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                Text("Log into account")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(AppColor.heading)
-                    .padding(.top, Spacing.sm)
 
-                VStack(spacing: Spacing.xs) {
-                    Text("Welcome back!")
-                    Text("Let's continue")
-                }
-                .font(.title3)
-                .foregroundStyle(AppColor.textPrimary)
-                .padding(.top, Spacing.xl)
-
-                Spacer(minLength: Spacing.xl)
-
-                Button(action: onContinueWithEmail) {
-                    Text("Continue with email or Phone No.")
-                }
-                .buttonStyle(FilledButtonStyle(background: AppColor.plum))
-                .padding(.horizontal, Spacing.lg)
-
-                Text("or")
-                    .font(.headline)
-                    .foregroundStyle(AppColor.textSecondary)
-                    .padding(.vertical, Spacing.xl)
-
+                // Header
                 VStack(spacing: Spacing.md) {
-                    AppleSignInButton { result in handleApple(result) }
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    SocialButton(provider: .facebook) { unavailableProvider = "Facebook" }
-                    SocialButton(provider: .google) { unavailableProvider = "Google" }
+                    Text("Log into account")
+                        .font(.largeTitle.weight(.bold))
+                        .foregroundStyle(AppColor.heading)
+
+                    VStack(spacing: 4) {
+                        Text("Welcome back!")
+                        Text("Let's continue your journey")
+                    }
+                    .font(.title3)
+                    .foregroundStyle(AppColor.textPrimary)
+                    .multilineTextAlignment(.center)
                 }
-                .padding(.horizontal, Spacing.lg)
+                .padding(.top, 60)
 
-                Spacer(minLength: Spacing.xl)
 
+                Spacer()
+
+
+                // Login options
+                VStack(spacing: 24) {
+
+                    // Apple Sign In (Primary)
+                    AppleSignInButton { result in
+                        handleApple(result)
+                    }
+                    .frame(height: 54)
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius: 16,
+                            style: .continuous
+                        )
+                    )
+
+
+                    // Divider
+                    HStack {
+                        Rectangle()
+                            .fill(
+                                AppColor.textSecondary.opacity(0.25)
+                            )
+                            .frame(height: 1)
+
+                        Text("or")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(AppColor.textSecondary)
+
+                        Rectangle()
+                            .fill(
+                                AppColor.textSecondary.opacity(0.25)
+                            )
+                            .frame(height: 1)
+                    }
+
+
+                    // Email Sign In (Secondary)
+                    Button(action: onContinueWithEmail) {
+                        HStack {
+                            Image(systemName: "envelope.fill")
+                            Text("Continue with email")
+                        }
+                    }
+                    .buttonStyle(
+                        FilledButtonStyle(background: AppColor.blackberry)
+                    )
+                    .frame(height: 54)
+                }
+                .padding(.horizontal, 32)
+
+
+                Spacer()
+
+
+                // Footer
                 LegalFooter()
-                    .padding(.bottom, Spacing.lg)
+                    .padding(.bottom, 32)
             }
         }
         .navigationBarBackButtonHidden(false)
-        .toolbarBackground(AppColor.lavender, for: .navigationBar)
-        .loadingOverlay(working, message: "Signing you in…")
-        .alert("Not available yet",
-               isPresented: Binding(get: { unavailableProvider != nil },
-                                    set: { if !$0 { unavailableProvider = nil } })) {
-            Button("OK", role: .cancel) { }
+        .toolbarBackground(AppColor.thistle, for: .navigationBar)
+        .loadingOverlay(
+            working,
+            message: "Signing you in…"
+        )
+
+
+        // Not available alert
+        .alert(
+            "Not available yet",
+            isPresented: Binding(
+                get: {
+                    unavailableProvider != nil
+                },
+                set: {
+                    if !$0 {
+                        unavailableProvider = nil
+                    }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
         } message: {
-            Text("\(unavailableProvider ?? "This") sign-in isn't set up yet. Please use Apple or email for now.")
+            Text(
+                "\(unavailableProvider ?? "This") sign-in isn't set up yet. Please use Apple or email for now."
+            )
         }
-        .alert("Sign-in problem",
-               isPresented: Binding(get: { appleError != nil },
-                                    set: { if !$0 { appleError = nil } })) {
-            Button("OK", role: .cancel) { }
+
+
+        // Apple error alert
+        .alert(
+            "Sign-in problem",
+            isPresented: Binding(
+                get: {
+                    appleError != nil
+                },
+                set: {
+                    if !$0 {
+                        appleError = nil
+                    }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
         } message: {
             Text(appleError ?? "")
         }
     }
 
-    private func handleApple(_ result: Result<AppleCredential, Error>) {
+
+    private func handleApple(
+        _ result: Result<AppleCredential, Error>
+    ) {
+
         switch result {
+
         case .success(let credential):
+
             working = true
+
             Task {
                 do {
-                    try await auth.signInWithApple(credential)
-                    working = false
-                    auth.enterApp()
+
+                    try await auth.signInWithApple(
+                        credential
+                    )
+
+                    await MainActor.run {
+                        working = false
+                        auth.enterApp()
+                    }
+
                 } catch {
-                    working = false
-                    appleError = (error as? LocalizedError)?.errorDescription
+
+                    await MainActor.run {
+                        working = false
+
+                        appleError =
+                        (error as? LocalizedError)?
+                            .errorDescription
                         ?? "We couldn't complete Apple sign-in. Please try again."
+                    }
                 }
             }
+
+
         case .failure:
-            // User cancelled or the request failed; stay on the screen quietly.
+            // User cancelled Apple sign-in
             break
         }
     }
 }
 
+
 #Preview {
     NavigationStack {
-        LoginView(onContinueWithEmail: {})
-            .environmentObject(AuthViewModel())
+        LoginView(
+            onContinueWithEmail: {}
+        )
+        .environmentObject(
+            AuthViewModel()
+        )
     }
 }
