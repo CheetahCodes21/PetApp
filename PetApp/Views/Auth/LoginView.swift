@@ -13,6 +13,7 @@ struct LoginView: View {
 
     @State private var unavailableProvider: String?
     @State private var appleError: String?
+    @State private var working = false
 
     var body: some View {
         ZStack {
@@ -61,6 +62,7 @@ struct LoginView: View {
         }
         .navigationBarBackButtonHidden(false)
         .toolbarBackground(AppColor.lavender, for: .navigationBar)
+        .loadingOverlay(working, message: "Signing you in…")
         .alert("Not available yet",
                isPresented: Binding(get: { unavailableProvider != nil },
                                     set: { if !$0 { unavailableProvider = nil } })) {
@@ -80,11 +82,14 @@ struct LoginView: View {
     private func handleApple(_ result: Result<AppleCredential, Error>) {
         switch result {
         case .success(let credential):
+            working = true
             Task {
                 do {
                     try await auth.signInWithApple(credential)
+                    working = false
                     auth.enterApp()
                 } catch {
+                    working = false
                     appleError = (error as? LocalizedError)?.errorDescription
                         ?? "We couldn't complete Apple sign-in. Please try again."
                 }

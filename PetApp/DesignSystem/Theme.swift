@@ -24,16 +24,20 @@ extension Color {
 }
 
 enum AppColor {
-    /// Full-bleed lavender used on the login / sign-in screens.
-    static let lavender = Color(hex: "#C6BFE6")
-    /// Soft near-white lavender used on the create-account screens.
-    static let surface = Color(hex: "#F5F2FB")
-    /// Deep plum used for the primary call-to-action on lavender screens.
-    static let plum = Color(hex: "#47293F")
-    /// Purple used for primary buttons and headings on surface screens.
-    static let purple = Color(hex: "#6B4E9E")
-    /// Heading tint on the lavender screens.
-    static let heading = Color(hex: "#6E4FA0")
+    // Palette sourced from Assets.xcassets → "App theme colours" so the app's
+    // look is driven by the project's named theme colours.
+
+    /// Soft lavender ("Thistle") used on the login / sign-in screens.
+    static let lavender = Color("Thistle")
+    /// Near-white ("Snow") used on the create-account / settings / home screens.
+    static let surface = Color("Snow")
+    /// Deep plum ("BlackberryCream") for the primary call-to-action.
+    static let plum = Color("BlackberryCream")
+    /// Muted purple ("NinjaPrincess") for primary buttons and accents.
+    static let purple = Color("NinjaPrincess")
+    /// Heading tint (also "NinjaPrincess").
+    static let heading = Color("NinjaPrincess")
+
     static let textPrimary = Color(hex: "#221B2B")
     static let textSecondary = Color(hex: "#6E6A78")
     static let fieldBorder = Color(hex: "#3E2A4E")
