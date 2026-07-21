@@ -1,4 +1,5 @@
 
+
 //
 //  ShareMemoryView.swift
 //  PetApp
@@ -66,7 +67,7 @@ struct ShareMemoryView: View {
                 }
             }
             .sheet(isPresented: $showActivitySheet) {
-                ActivityShareSheet(items: [shareText, cardImage].compactMap { $0 })
+                ActivityShareSheet(items: shareItems)
             }
         }
     }
@@ -109,6 +110,18 @@ struct ShareMemoryView: View {
  
     private var shareText: String {
         "\(memory.title)\n\(memory.date.formatted(date: .abbreviated, time: .omitted))\n\n\(memory.transcript)"
+    }
+ 
+    /// Built explicitly rather than `[shareText, cardImage].compactMap { $0 }`
+    /// — boxing a `UIImage?` straight into `[Any]` means compactMap can't
+    /// filter out a nil (it becomes a non-nil `Any` wrapping an empty
+    /// optional), so a missing photo would silently end up in the share sheet.
+    private var shareItems: [Any] {
+        var items: [Any] = [shareText]
+        if let cardImage {
+            items.append(cardImage)
+        }
+        return items
     }
  
     /// Renders the summary card to a UIImage for sharing/saving, using the

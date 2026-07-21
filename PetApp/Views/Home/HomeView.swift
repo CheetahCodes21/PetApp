@@ -1,3 +1,4 @@
+
 //
 //  HomeView.swift
 //  PetApp
@@ -51,10 +52,10 @@ struct HomeView: View {
             }
         }
         .memoryRecorder(isPresented: $showRecording, question: DailyPrompts.all[promptIndex]) { saved in
-            try? saved.persist(in: modelContext, companion: companion)
+            _ = try? saved.persist(in: modelContext, companion: companion)
         }
         .recordingRecovery { saved in
-            try? saved.persist(in: modelContext, companion: companion)
+            _ = try? saved.persist(in: modelContext, companion: companion)
         }
         .task {
             ensureCompanion()

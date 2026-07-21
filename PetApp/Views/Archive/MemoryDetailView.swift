@@ -1,3 +1,4 @@
+
 //
 //  MemoryDetailView.swift
 //  PetApp
@@ -12,6 +13,7 @@ import SwiftUI
 import SwiftData
 import UIKit
 import AVFoundation
+import Combine
  
 struct MemoryDetailView: View {
     @Environment(\.modelContext) private var context
@@ -362,9 +364,9 @@ final class MemoryAudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate
  
     private func startTimer() {
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self, let player = self.player, player.duration > 0 else { return }
-            Task { @MainActor in
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            Task { @MainActor [weak self] in
+                guard let self, let player = self.player, player.duration > 0 else { return }
                 self.progress = player.currentTime / player.duration
             }
         }
@@ -378,3 +380,4 @@ final class MemoryAudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate
         }
     }
 }
+ 
