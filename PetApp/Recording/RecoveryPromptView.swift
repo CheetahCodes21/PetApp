@@ -26,7 +26,7 @@ struct RecoveryPromptView: View {
 
     var body: some View {
         ZStack {
-            AppColor.surface.ignoresSafeArea()
+            AppColor.snow.ignoresSafeArea()
 
             VStack(spacing: Spacing.lg) {
                 Text("We kept your recording")
@@ -47,7 +47,7 @@ struct RecoveryPromptView: View {
                     Button(isPlaying ? "Stop" : "Listen") { togglePlayback() }
                         .buttonStyle(OutlinedButtonStyle())
                     Button("Continue recording") { stopPlayback(); onContinue(draft) }
-                        .buttonStyle(FilledButtonStyle(background: AppColor.purple))
+                        .buttonStyle(FilledButtonStyle(background: AppColor.thistle))
                     Button("Save as a memory") { stopPlayback(); onSave(draft) }
                         .buttonStyle(FilledButtonStyle(background: AppColor.success))
                     Button("Delete", role: .destructive) { showDeleteConfirm = true }
@@ -77,7 +77,7 @@ struct RecoveryPromptView: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(AppColor.lavender.opacity(0.4))
+                .fill(AppColor.blackberry.opacity(0.4))
         )
     }
 
