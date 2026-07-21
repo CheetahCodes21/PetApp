@@ -34,7 +34,6 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.lg) {
                     header
-                    WeekStrip()
                     statCards
                     companionCard
                     promptRow
@@ -280,49 +279,6 @@ struct HomeView: View {
     }
 }
 
-// MARK: - Week strip
-
-private struct WeekStrip: View {
-    private var days: [Date] {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: today) }
-    }
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(days, id: \.self) { day in
-                let isToday = Calendar.current.isDateInToday(day)
-                VStack(spacing: 2) {
-                    Text(format(day, "EEE"))
-                        .font(.caption)
-                        .foregroundStyle(AppColor.textSecondary)
-                    Text(format(day, "d"))
-                        .font(.headline)
-                        .foregroundStyle(isToday ? AppColor.purple : AppColor.textPrimary)
-                    Text(format(day, "MMM"))
-                        .font(.caption2)
-                        .foregroundStyle(AppColor.textSecondary)
-                    Circle()
-                        .fill(isToday ? amber : .clear)
-                        .frame(width: 5, height: 5)
-                }
-                .frame(maxWidth: .infinity)
-            }
-        }
-        .accessibilityHidden(true)
-    }
-
-    private let amber = Color(hex: "#E8912E")
-
-    private func format(_ date: Date, _ pattern: String) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = pattern
-        formatter.locale = Locale(identifier: "en_US")
-        return formatter.string(from: date)
-    }
-}
-
 // MARK: - Edit companion sheet
 
 private struct EditCompanionSheet: View {
@@ -331,36 +287,68 @@ private struct EditCompanionSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
+    @State private var kind: CompanionKind = .pet
     @State private var colorVariant = CompanionColorOption.default.rawValue
 
     var body: some View {
         NavigationStack {
             ZStack {
                 AppColor.surface.ignoresSafeArea()
-                VStack(alignment: .leading, spacing: Spacing.lg) {
-                    LabeledField(label: "Companion name", text: $name)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Spacing.lg) {
+                        LabeledField(label: "Companion name", text: $name)
 
-                    Text("Colour")
-                        .font(.headline)
-                        .foregroundStyle(AppColor.textPrimary)
-                    HStack(spacing: Spacing.md) {
-                        ForEach(CompanionColorOption.allCases) { option in
-                            Button {
-                                colorVariant = option.rawValue
-                            } label: {
-                                Circle()
-                                    .fill(option.color)
-                                    .frame(width: 40, height: 40)
-                                    .overlay(Circle().stroke(AppColor.textPrimary,
-                                                             lineWidth: colorVariant == option.rawValue ? 3 : 0).padding(2))
+                        VStack(alignment: .leading, spacing: Spacing.xs) {
+                            Text("Type")
+                                .font(.headline)
+                                .foregroundStyle(AppColor.textPrimary)
+                            Picker("Type", selection: $kind) {
+                                ForEach(CompanionKind.allCases) { option in
+                                    Text(option.title).tag(option)
+                                }
                             }
-                            .accessibilityLabel(option.rawValue)
+                            .pickerStyle(.segmented)
                         }
-                    }
 
-                    Spacer()
+                        VStack(alignment: .leading, spacing: Spacing.xs) {
+                            Text("Colour")
+                                .font(.headline)
+                                .foregroundStyle(AppColor.textPrimary)
+                            HStack(spacing: Spacing.md) {
+                                ForEach(CompanionColorOption.allCases) { option in
+                                    Button {
+                                        colorVariant = option.rawValue
+                                    } label: {
+                                        Circle()
+                                            .fill(option.color)
+                                            .frame(width: 40, height: 40)
+                                            .overlay(Circle().stroke(AppColor.textPrimary,
+                                                                     lineWidth: colorVariant == option.rawValue ? 3 : 0).padding(2))
+                                    }
+                                    .accessibilityLabel(option.rawValue)
+                                }
+                            }
+                        }
+
+                        // Age — read-only (how old the companion is).
+                        HStack {
+                            Text("Age")
+                                .font(.headline)
+                                .foregroundStyle(AppColor.textPrimary)
+                            Spacer()
+                            Text(ageText)
+                                .font(.body)
+                                .foregroundStyle(AppColor.textSecondary)
+                        }
+                        .padding(Spacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(AppColor.purple.opacity(0.1),
+                                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Age, \(ageText)")
+                    }
+                    .padding(Spacing.lg)
                 }
-                .padding(Spacing.lg)
             }
             .navigationTitle("Edit companion")
             .navigationBarTitleDisplayMode(.inline)
@@ -374,13 +362,26 @@ private struct EditCompanionSheet: View {
             }
             .onAppear {
                 name = companion.name
+                kind = companion.kind
                 colorVariant = companion.colorVariant
             }
         }
     }
 
+    private var ageText: String {
+        let days = Calendar.current.dateComponents([.day],
+                                                   from: companion.createdAt,
+                                                   to: Date()).day ?? 0
+        switch days {
+        case ..<1:  return "Born today"
+        case 1:     return "1 day old"
+        default:    return "\(days) days old"
+        }
+    }
+
     private func save() {
         companion.name = name
+        companion.kind = kind
         companion.colorVariant = colorVariant
         try? modelContext.save()
         dismiss()
