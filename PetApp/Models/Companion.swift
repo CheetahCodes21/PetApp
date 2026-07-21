@@ -9,7 +9,7 @@ import SwiftData
 final class Companion {
     var id: String
     var kind: CompanionKind
-    var colorVariant: String   // hex string, matches CompanionColor.palette values
+    var colorVariant: String   // CompanionColorOption.rawValue, e.g. "purple" — used to build Lottie file names
     var name: String
  
     /// Plain-language interval, e.g. "Once a day", "Every two days" — never a raw number.

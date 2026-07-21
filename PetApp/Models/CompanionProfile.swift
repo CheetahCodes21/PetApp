@@ -6,7 +6,7 @@
 //  preferences, configured during onboarding. This is the lightweight,
 //  easily-discardable draft used *while onboarding is in progress* — it's
 //  converted into the persisted `Companion` (SwiftData) once the user
-//  confirms Step 3. See CompanionProfile+Persistence.swift.
+//  confirms Step 3. See CompanionprofilePersistence.swift.
 //
 //  Per spec: one pet design and one plant design, each recolourable —
 //  no species or plant-type picker.
@@ -22,53 +22,35 @@ enum CompanionKind: String, Codable, CaseIterable, Identifiable {
     var systemImage: String { self == .pet ? "pawprint.fill" : "leaf.fill" }
 }
  
-/// Preset accent colors for companion customisation.
-enum CompanionColor {
-    static let palette: [String] = [
-        "#6B4E9E", // purple
-        "#E4739A", // pink
-        "#F2A65A", // amber
-        "#5EAE7E", // green
-        "#5A9BD4", // blue
-        "#C0504D", // red
-    ]
-    static let defaultHex = palette[0]
-}
- 
 struct CompanionProfile: Codable, Equatable {
     var kind: CompanionKind = .pet
-    var colorHex: String = CompanionColor.defaultHex
+    var colorOption: CompanionColorOption = .default
     var name: String = ""
     /// How many days the feeding window lasts (1–15). Converted to a
-    /// plain-language label before being shown anywhere in UI — see
-    /// CompanionProfile+Persistence.swift.
+    /// plain-language label before being shown anywhere in UI.
     var careFrequencyDays: Int = 7
-    /// Whether the companion shows an "unwell" state if not fed in time.
     var sickIfNotFed: Bool = false
-    /// Whether the phone vibrates when the companion is fed.
     var vibrateWhenFed: Bool = true
  
-    var color: Color { Color(hex: colorHex) }
+    var color: Color { colorOption.color }
  
     /// Preview of the currently selected companion, recoloured to `color`.
     ///
-    /// NOTE for whoever owns assets (Rain): this only recolours correctly if
-    /// "Pet" is shipped as template-rendering-mode artwork (a single-colour
-    /// mask) — .foregroundStyle has no effect on full-colour images.
-    /// .colorMultiply on the plant Lottie is an approximation, not a true
-    /// recolour; flag before this ships if it doesn't look right.
+    /// TODO(Rain): only the default flower idle animation exists in the
+    /// bundle today ("FlowerIdleDisplay"). Once per-colour Lottie exports
+    /// land (e.g. "pet-purple-good-idle", "plant-purple-good-idle"), swap
+    /// the placeholder below for `LottieView(name: animationFileName)`.
+    /// The pawprint/leaf symbols here are a visible stand-in, not final art.
     @ViewBuilder
     var preview: some View {
         switch kind {
         case .pet:
-            Image("Pet")
-                .renderingMode(.template)
+            Image(systemName: "pawprint.fill")
                 .resizable()
                 .scaledToFit()
                 .foregroundStyle(color)
         case .plant:
             LottieView(name: "FlowerIdleDisplay")
-                .colorMultiply(color)
         }
     }
 }

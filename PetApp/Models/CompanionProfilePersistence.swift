@@ -1,10 +1,10 @@
 //
-//  CompanionprofilePersistence.swift
+//  CompanionProfilePersistence.swift
 //  PetApp
 //
 //  Created by Yijia Sang on 21/7/2026.
 //
-
+ 
 import Foundation
  
 extension CompanionProfile {
@@ -19,7 +19,7 @@ extension CompanionProfile {
     func makeCompanion(owner: User?) -> Companion {
         Companion(
             kind: kind,
-            colorVariant: colorHex,
+            colorVariant: colorOption.assetSlug,
             name: name,
             careFrequencyLabel: Self.label(forDays: careFrequencyDays),
             becomesUnwellIfNotFed: sickIfNotFed,

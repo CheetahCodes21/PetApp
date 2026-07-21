@@ -4,24 +4,24 @@
 //
 //  The individual steps used by RegistrationFlowView.
 //
-
+ 
 import SwiftUI
-
+ 
 // MARK: - Get started
-
+ 
 struct GetStartedStep: View {
     @EnvironmentObject private var auth: AuthViewModel
     @Binding var fullName: String
     let onBack: () -> Void
     let onNext: () -> Void
-
+ 
     private enum Mode { case choose, email }
     @State private var mode: Mode = .choose
     @State private var email = ""
     @State private var password = ""
     @State private var working = false
     @State private var error: String?
-
+ 
     var body: some View {
         StepScaffold(
             title: mode == .choose ? "Get started" : "Sign up with email",
@@ -35,34 +35,34 @@ struct GetStartedStep: View {
             if mode == .choose { chooseContent } else { emailContent }
         }
     }
-
+ 
     private var chooseContent: some View {
         VStack(spacing: Spacing.lg) {
             Text("🐤")
                 .font(.system(size: 88))
                 .padding(.top, Spacing.md)
                 .accessibilityHidden(true)
-
+ 
             VStack(spacing: Spacing.md) {
                 AppleSignInButton { result in handleApple(result) }
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
+ 
                 Button("Sign up with email") { mode = .email }
                     .buttonStyle(OutlinedButtonStyle())
             }
-
+ 
             if let error {
                 Text(error).font(.subheadline).foregroundStyle(.red)
                     .multilineTextAlignment(.center)
             }
-
+ 
             Text("You can change any of these details later.")
                 .font(.subheadline)
                 .foregroundStyle(AppColor.textSecondary)
                 .multilineTextAlignment(.center)
         }
     }
-
+ 
     private var emailContent: some View {
         VStack(alignment: .leading, spacing: Spacing.lg) {
             LabeledField(label: "Email", placeholder: "name@email.com",
@@ -73,11 +73,11 @@ struct GetStartedStep: View {
             Text("At least 6 characters.")
                 .font(.subheadline)
                 .foregroundStyle(AppColor.textSecondary)
-
+ 
             if let error {
                 Text(error).font(.subheadline).foregroundStyle(.red)
             }
-
+ 
             Button(action: createAccount) {
                 if working {
                     ProgressView().tint(.white)
@@ -90,11 +90,11 @@ struct GetStartedStep: View {
             .opacity(canSubmit ? 1 : 0.5)
         }
     }
-
+ 
     private var canSubmit: Bool {
         email.contains("@") && password.count >= 6
     }
-
+ 
     private func createAccount() {
         working = true
         error = nil
@@ -110,7 +110,7 @@ struct GetStartedStep: View {
             }
         }
     }
-
+ 
     private func handleApple(_ result: Result<AppleCredential, Error>) {
         switch result {
         case .success(let credential):
@@ -131,16 +131,16 @@ struct GetStartedStep: View {
         }
     }
 }
-
+ 
 // MARK: - Permissions
-
+ 
 struct PermissionsStep: View {
     @ObservedObject var permissions: PermissionsManager
     let onBack: () -> Void
     let onNext: () -> Void
-
+ 
     @State private var requesting = false
-
+ 
     var body: some View {
         StepScaffold(title: "A few permissions",
                      subtitle: "MemoMe only asks for what it needs to help you.",
@@ -151,7 +151,7 @@ struct PermissionsStep: View {
                 ForEach(AppPermission.allCases) { permission in
                     row(permission)
                 }
-
+ 
                 Button {
                     Task {
                         requesting = true
@@ -167,14 +167,14 @@ struct PermissionsStep: View {
             }
         }
     }
-
+ 
     private func row(_ permission: AppPermission) -> some View {
         HStack(alignment: .top, spacing: Spacing.md) {
             Image(systemName: permission.systemImage)
                 .font(.title2)
                 .foregroundStyle(AppColor.purple)
                 .frame(width: 40)
-
+ 
             VStack(alignment: .leading, spacing: 2) {
                 Text(permission.title)
                     .font(.headline)
@@ -183,9 +183,9 @@ struct PermissionsStep: View {
                     .font(.body)
                     .foregroundStyle(AppColor.textSecondary)
             }
-
+ 
             Spacer()
-
+ 
             statusIcon(permissions.state(for: permission))
         }
         .padding(Spacing.md)
@@ -196,7 +196,7 @@ struct PermissionsStep: View {
                 .stroke(AppColor.textSecondary.opacity(0.15), lineWidth: 1)
         )
     }
-
+ 
     @ViewBuilder
     private func statusIcon(_ state: PermissionState) -> some View {
         switch state {
@@ -209,15 +209,15 @@ struct PermissionsStep: View {
         }
     }
 }
-
+ 
 // MARK: - Step 1: personal details
-
+ 
 struct PersonalDetailsStep: View {
     @Binding var fullName: String
     @Binding var dob: Date
     let onBack: () -> Void
     let onNext: () -> Void
-
+ 
     var body: some View {
         StepScaffold(stepNumber: 1,
                      title: "Personal details",
@@ -229,7 +229,7 @@ struct PersonalDetailsStep: View {
             VStack(alignment: .leading, spacing: Spacing.lg) {
                 LabeledField(label: "Full name", text: $fullName,
                              textContentType: .name)
-
+ 
                 VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text("Date of birth")
                         .font(.headline)
@@ -245,14 +245,14 @@ struct PersonalDetailsStep: View {
         }
     }
 }
-
+ 
 // MARK: - Step 2: accessibility
-
+ 
 struct AccessibilityStep: View {
     @ObservedObject var settings: AppSettings
     let onBack: () -> Void
     let onNext: () -> Void
-
+ 
     var body: some View {
         StepScaffold(stepNumber: 2,
                      title: "Accessibility settings",
@@ -271,7 +271,7 @@ struct AccessibilityStep: View {
                     controlLabel("High contrast")
                 }
                 .tint(AppColor.purple)
-
+ 
                 labeled("Voice speed") {
                     VStack(spacing: Spacing.sm) {
                         Slider(value: $settings.voiceSpeed, in: 0...1)
@@ -288,11 +288,11 @@ struct AccessibilityStep: View {
                         }
                     }
                 }
-
+ 
                 labeled("Language") {
                     LanguageMenu(selection: $settings.language)
                 }
-
+ 
                 Toggle(isOn: $settings.textToVoice) {
                     controlLabel("Text-to-voice")
                 }
@@ -300,7 +300,7 @@ struct AccessibilityStep: View {
             }
         }
     }
-
+ 
     private func labeled<V: View>(_ title: String, @ViewBuilder _ control: () -> V) -> some View {
         HStack {
             controlLabel(title)
@@ -308,21 +308,21 @@ struct AccessibilityStep: View {
             control()
         }
     }
-
+ 
     private func controlLabel(_ title: String) -> some View {
         Text(title)
             .font(.title3.weight(.semibold))
             .foregroundStyle(AppColor.textPrimary)
     }
 }
-
+ 
 // MARK: - Step 3: choose companion
-
+ 
 struct CompanionStep: View {
     @Binding var profile: CompanionProfile
     let onBack: () -> Void
     let onNext: () -> Void
-
+ 
     var body: some View {
         StepScaffold(stepNumber: 3,
                      title: "Choose your MemoMe",
@@ -333,24 +333,17 @@ struct CompanionStep: View {
                      onPrimary: onNext) {
             VStack(alignment: .leading, spacing: Spacing.lg) {
                 preview
-
+ 
                 // Pet or plant
                 SegmentedKind(selection: $profile.kind)
-
-                // Species / type
-                if profile.kind == .pet {
-                    petPicker
-                } else {
-                    plantPicker
-                }
-
+ 
                 // Colour customisation
                 sectionLabel("Colour")
                 colorPicker
-
+ 
                 // Name
                 LabeledField(label: "Companion name", text: $profile.name)
-
+ 
                 // Care frequency
                 sectionLabel("Feed every \(profile.careFrequencyDays) day\(profile.careFrequencyDays == 1 ? "" : "s")")
                 Slider(
@@ -361,12 +354,12 @@ struct CompanionStep: View {
                     in: 1...15, step: 1
                 )
                 .tint(AppColor.purple)
-
+ 
                 Toggle(isOn: $profile.sickIfNotFed) {
                     toggleLabel("Show as sick if not fed in time")
                 }
                 .tint(AppColor.purple)
-
+ 
                 Toggle(isOn: $profile.vibrateWhenFed) {
                     toggleLabel("Vibrate phone when fed")
                 }
@@ -374,7 +367,7 @@ struct CompanionStep: View {
             }
         }
     }
-
+ 
     private var preview: some View {
         ZStack {
             Circle()
@@ -389,87 +382,16 @@ struct CompanionStep: View {
         .frame(maxWidth: .infinity)
         .accessibilityHidden(true)
     }
-
-    private var petPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Spacing.md) {
-                ForEach(Companion.allCases) { pet in
-                    Button {
-                        profile.petSpecies = pet
-                    } label: {
-                        VStack(spacing: 4) {
-                            pet.image
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 64, height: 64)
-                            Text(pet.displayName)
-                                .font(.caption)
-                                .foregroundStyle(AppColor.textPrimary)
-                        }
-                        .padding(Spacing.sm)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(profile.petSpecies == pet ? profile.color.opacity(0.18) : .clear)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(profile.petSpecies == pet ? profile.color : .clear, lineWidth: 2)
-                        )
-                    }
-                    .accessibilityLabel(pet.displayName)
-                }
-            }
-            .padding(.vertical, 4)
-        }
-    }
-
-    private var plantPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Spacing.md) {
-                ForEach(PlantType.allCases) { plant in
-                    Button {
-                        profile.plantType = plant
-                    } label: {
-                        VStack(spacing: 4) {
-                            Group {
-                                if let lottie = plant.lottieName {
-                                    LottieView(name: lottie)
-                                        .frame(width: 52, height: 52)
-                                } else {
-                                    Text(plant.emoji).font(.system(size: 52))
-                                }
-                            }
-                            .frame(height: 52)
-                            Text(plant.displayName)
-                                .font(.caption)
-                                .foregroundStyle(AppColor.textPrimary)
-                        }
-                        .padding(Spacing.sm)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(profile.plantType == plant ? profile.color.opacity(0.18) : .clear)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(profile.plantType == plant ? profile.color : .clear, lineWidth: 2)
-                        )
-                    }
-                    .accessibilityLabel(plant.displayName)
-                }
-            }
-            .padding(.vertical, 4)
-        }
-    }
-
+ 
     private var colorPicker: some View {
         HStack(spacing: Spacing.md) {
-            ForEach(CompanionColor.palette, id: \.self) { hex in
-                let isSelected = profile.colorHex == hex
+            ForEach(CompanionColorOption.allCases) { option in
+                let isSelected = profile.colorOption == option
                 Button {
-                    profile.colorHex = hex
+                    profile.colorOption = option
                 } label: {
                     Circle()
-                        .fill(Color(hex: hex))
+                        .fill(option.color)
                         .frame(width: 40, height: 40)
                         .overlay(
                             Circle().stroke(AppColor.textPrimary,
@@ -477,49 +399,49 @@ struct CompanionStep: View {
                                 .padding(2)
                         )
                 }
-                .accessibilityLabel("Colour")
+                .accessibilityLabel(option.id.capitalized)
                 .accessibilityAddTraits(isSelected ? [.isSelected] : [])
             }
         }
     }
-
+ 
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
             .font(.title3.weight(.semibold))
             .foregroundStyle(AppColor.textPrimary)
     }
-
+ 
     private func toggleLabel(_ text: String) -> some View {
         Text(text)
             .font(.headline)
             .foregroundStyle(AppColor.textPrimary)
     }
 }
-
+ 
 // MARK: - Welcome popup
-
+ 
 struct WelcomePopup: View {
     let profile: CompanionProfile
     let onFinish: () -> Void
-
+ 
     var body: some View {
         ZStack {
             Color.black.opacity(0.4).ignoresSafeArea()
-
+ 
             VStack(spacing: Spacing.lg) {
                 profile.preview
                     .frame(width: 110, height: 110)
-
+ 
                 Text("Welcome to MemoMe!")
                     .font(.largeTitle.weight(.bold))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(AppColor.textPrimary)
-
+ 
                 Text(greeting)
                     .font(.title3)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(AppColor.textSecondary)
-
+ 
                 Button("Let's go", action: onFinish)
                     .buttonStyle(FilledButtonStyle(background: AppColor.purple))
             }
@@ -531,7 +453,7 @@ struct WelcomePopup: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isModal)
     }
-
+ 
     private var greeting: String {
         let name = profile.name.trimmingCharacters(in: .whitespaces)
         return name.isEmpty
@@ -539,12 +461,12 @@ struct WelcomePopup: View {
             : "\(name) is ready to help you remember, one day at a time."
     }
 }
-
+ 
 // MARK: - Shared inline controls
-
+ 
 private struct FontSizePicker: View {
     @Binding var selection: AppTextSize
-
+ 
     var body: some View {
         HStack(spacing: 0) {
             cell(.small, size: 14)
@@ -554,7 +476,7 @@ private struct FontSizePicker: View {
         .background(AppColor.purple.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
-
+ 
     private func cell(_ value: AppTextSize, size: CGFloat) -> some View {
         Button { selection = value } label: {
             Text("A")
@@ -568,10 +490,10 @@ private struct FontSizePicker: View {
         }
     }
 }
-
+ 
 private struct SegmentedTheme: View {
     @Binding var selection: AppTheme
-
+ 
     var body: some View {
         HStack(spacing: 0) {
             seg("Light", .light)
@@ -580,7 +502,7 @@ private struct SegmentedTheme: View {
         .background(AppColor.purple.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
-
+ 
     private func seg(_ title: String, _ value: AppTheme) -> some View {
         Button { selection = value } label: {
             Text(title)
@@ -595,10 +517,10 @@ private struct SegmentedTheme: View {
         }
     }
 }
-
+ 
 private struct SegmentedKind: View {
     @Binding var selection: CompanionKind
-
+ 
     var body: some View {
         HStack(spacing: 0) {
             ForEach(CompanionKind.allCases) { kind in
@@ -619,10 +541,10 @@ private struct SegmentedKind: View {
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
-
+ 
 private struct LanguageMenu: View {
     @Binding var selection: AppLanguage
-
+ 
     var body: some View {
         Menu {
             ForEach(AppLanguage.allCases) { language in
@@ -651,3 +573,4 @@ private struct LanguageMenu: View {
         }
     }
 }
+ 
