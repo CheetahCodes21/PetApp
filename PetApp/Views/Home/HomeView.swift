@@ -13,6 +13,7 @@ import UIKit
 
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var settings: AppSettings
     @Query private var companions: [Companion]
     @Query private var allMemories: [Memory]
 
@@ -29,7 +30,7 @@ struct HomeView: View {
 
     var body: some View {
         ZStack {
-            AppColor.snow.ignoresSafeArea()
+            AppColor.screenBackground.ignoresSafeArea()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.lg) {
@@ -49,7 +50,12 @@ struct HomeView: View {
                 EditCompanionSheet(companion: companion)
             }
         }
-        .task { ensureCompanion() }
+        .task {
+            ensureCompanion()
+            syncWidget()
+        }
+        .onChange(of: companions.count) { _, _ in syncWidget() }
+        .onChange(of: allMemories.count) { _, _ in syncWidget() }
     }
 
     /// Guarantees there's a companion to show and edit. If onboarding never
@@ -232,7 +238,7 @@ struct HomeView: View {
                     .foregroundStyle(AppColor.textSecondary)
             }
 
-            Text(DailyPrompts.all[promptIndex])
+            Text(LocalizedStringKey(DailyPrompts.all[promptIndex]))
                 .font(.headline)
                 .foregroundStyle(AppColor.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -265,6 +271,11 @@ struct HomeView: View {
         if companion.vibrateWhenFed {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         }
+        syncWidget()
+    }
+
+    private func syncWidget() {
+        WidgetSync.update(companion: companion, name: settings.name, memories: allMemories)
     }
 
     // MARK: - Record
@@ -307,7 +318,7 @@ private struct EditCompanionSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppColor.snow.ignoresSafeArea()
+                AppColor.screenBackground.ignoresSafeArea()
                 ScrollView {
                     VStack(alignment: .leading, spacing: Spacing.lg) {
                         companionPreview

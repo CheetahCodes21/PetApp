@@ -16,7 +16,7 @@
 import Foundation
 
 enum AppGroup {
-    static let id = "group.com.yourteam.petapp"
+    static let id = "group.com.AppleFoundationProgram.PetApp"
 }
 
 /// Snapshot of everything the widgets/Live Activity need to render.
@@ -32,7 +32,7 @@ struct PetWidgetData: Codable {
     var memoriesGoalThisMonth: Int
 
     static let placeholder = PetWidgetData(
-        companionAssetName: "chick",
+        companionAssetName: "dog1",
         userFirstName: "Margaret",
         todaysQuestion: "What did you do today?",
         isHungry: true,

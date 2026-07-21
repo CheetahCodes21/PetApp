@@ -42,7 +42,7 @@ struct PrivacyDisclosureView: View {
                 }
                 .padding(Spacing.lg)
             }
-            .background(AppColor.snow.ignoresSafeArea())
+            .background(AppColor.screenBackground.ignoresSafeArea())
             .toolbar {
                 if onAcknowledge == nil {
                     ToolbarItem(placement: .topBarTrailing) {

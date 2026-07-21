@@ -20,10 +20,16 @@ struct SettingsView: View {
     @State private var editingBirthday = false
     @State private var nameDraft = ""
     @State private var confirmSignOut = false
+    @State private var editingEmail = false
+    @State private var emailDraft = ""
+    @State private var editingPassword = false
+    @State private var passwordDraft = ""
+    @State private var confirmDelete = false
+    @State private var accountError: String?
 
     var body: some View {
         ZStack {
-            AppColor.snow.ignoresSafeArea()
+            AppColor.screenBackground.ignoresSafeArea()
 
             ScrollView {
                 VStack(spacing: Spacing.lg) {
@@ -33,6 +39,14 @@ struct SettingsView: View {
                         confirmSignOut = true
                     } label: {
                         Text("Sign out")
+                    }
+                    .buttonStyle(OutlinedButtonStyle())
+
+                    Button(role: .destructive) {
+                        confirmDelete = true
+                    } label: {
+                        Text("Delete account")
+                            .foregroundStyle(.red)
                     }
                     .buttonStyle(OutlinedButtonStyle())
                 }
@@ -69,6 +83,63 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Your memories stay safely saved. You can sign back in anytime.")
+        }
+        .alert("Edit email", isPresented: $editingEmail) {
+            TextField("name@email.com", text: $emailDraft)
+                .textInputAutocapitalization(.never)
+                .keyboardType(.emailAddress)
+            Button("Save") { Task { await saveEmail() } }
+            Button("Cancel", role: .cancel) { }
+        }
+        .alert("Edit password", isPresented: $editingPassword) {
+            SecureField("New password", text: $passwordDraft)
+            Button("Save") { Task { await savePassword() } }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("At least 6 characters.")
+        }
+        .confirmationDialog("Delete your account?",
+                            isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete account", role: .destructive) { Task { await deleteAccount() } }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This permanently removes your account. You'll be signed out.")
+        }
+        .alert("Something went wrong",
+               isPresented: Binding(get: { accountError != nil },
+                                    set: { if !$0 { accountError = nil } })) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(accountError ?? "")
+        }
+    }
+
+    // MARK: - Account actions
+
+    private func saveEmail() async {
+        do {
+            try await auth.updateEmail(to: emailDraft)
+        } catch {
+            accountError = (error as? LocalizedError)?.errorDescription
+                ?? "We couldn't update your email. That address may already be in use."
+        }
+    }
+
+    private func savePassword() async {
+        do {
+            try await auth.updatePassword(to: passwordDraft)
+        } catch {
+            accountError = (error as? LocalizedError)?.errorDescription
+                ?? "We couldn't update your password. Please try again."
+        }
+    }
+
+    private func deleteAccount() async {
+        do {
+            try await auth.deleteAccount()
+        } catch {
+            accountError = (error as? LocalizedError)?.errorDescription
+                ?? "We couldn't delete your account. Please try again."
         }
     }
 
@@ -119,6 +190,35 @@ struct SettingsView: View {
                     .foregroundStyle(AppColor.textSecondary)
             } action: {
                 editingBirthday = true
+            }
+
+            Divider().overlay(AppColor.textSecondary.opacity(0.25))
+
+            // Email
+            SettingRow {
+                DisclosureContent(title: "Email",
+                                  subtitle: auth.email.isEmpty ? "Not set" : auth.email)
+            } trailing: {
+                Image(systemName: "pencil")
+                    .font(.title3)
+                    .foregroundStyle(AppColor.textPrimary)
+            } action: {
+                emailDraft = auth.email
+                editingEmail = true
+            }
+
+            Divider().overlay(AppColor.textSecondary.opacity(0.25))
+
+            // Password
+            SettingRow {
+                DisclosureContent(title: "Password", subtitle: "••••••••")
+            } trailing: {
+                Image(systemName: "pencil")
+                    .font(.title3)
+                    .foregroundStyle(AppColor.textPrimary)
+            } action: {
+                passwordDraft = ""
+                editingPassword = true
             }
 
             Divider().overlay(AppColor.textSecondary.opacity(0.25))

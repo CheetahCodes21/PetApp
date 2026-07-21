@@ -11,34 +11,14 @@ import SwiftUI
 
 struct LegalFooter: View {
     var body: some View {
-        Text(attributed)
+        // Localized via the String Catalog; markdown bold keeps Terms /
+        // Privacy Policy emphasised.
+        Text("By using this App, you agree to the **Terms** and **Privacy Policy**.")
             .font(.subheadline)
+            .foregroundStyle(AppColor.textSecondary)
+            .tint(AppColor.textPrimary)
             .multilineTextAlignment(.center)
             .padding(.horizontal, Spacing.lg)
-            .accessibilityLabel("By using this app, you agree to the Terms and Privacy Policy.")
-    }
-
-    private var attributed: AttributedString {
-        var full = AttributedString("By using this App, you agree to the ")
-        full.foregroundColor = AppColor.textSecondary
-
-        func emphasized(_ text: String) -> AttributedString {
-            var part = AttributedString(text)
-            part.foregroundColor = AppColor.textPrimary
-            part.font = .subheadline.weight(.bold)
-            return part
-        }
-
-        var and = AttributedString(" and ")
-        and.foregroundColor = AppColor.textSecondary
-        var period = AttributedString(".")
-        period.foregroundColor = AppColor.textSecondary
-
-        full += emphasized("Terms")
-        full += and
-        full += emphasized("Privacy Policy")
-        full += period
-        return full
     }
 }
 
@@ -111,8 +91,8 @@ struct LabeledField: View {
                 .font(.title3)
                 .keyboardType(keyboard)
                 .textContentType(textContentType)
-                .autocorrectionDisabled(isSecure)
-                .textInputAutocapitalization(isSecure ? .never : .sentences)
+                .autocorrectionDisabled(isSecure || keyboard == .emailAddress)
+                .textInputAutocapitalization(isSecure || keyboard == .emailAddress ? .never : .sentences)
 
                 if isSecure {
                     Button {

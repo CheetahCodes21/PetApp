@@ -87,7 +87,7 @@ final class AuthViewModel: ObservableObject {
                 let normalizedEmail = loginIdentifier.trimmingCharacters(in: .whitespaces).lowercased()
                 let record: AppUserRecord = try await table
                     .select("id, email, full_name, apple_sub")
-                    .eq("email", value: normalizedEmail)
+                    .ilike("email", value: normalizedEmail)   // case-insensitive email match
                     .eq("password", value: loginPassword)
                     .single()
                     .execute()
@@ -185,6 +185,39 @@ final class AuthViewModel: ObservableObject {
         email = ""
     }
 
+    // MARK: - Account management (edit email / password, delete)
+
+    func updateEmail(to newEmail: String) async throws {
+        guard let userId else { throw AuthError.notSignedIn }
+        let normalized = newEmail.trimmingCharacters(in: .whitespaces).lowercased()
+        guard normalized.contains("@") else { throw AuthError.invalidEmail }
+        try await table.update(["email": normalized]).eq("id", value: userId.uuidString).execute()
+        email = normalized
+        cacheCurrentUser()
+    }
+
+    func updatePassword(to newPassword: String) async throws {
+        guard let userId else { throw AuthError.notSignedIn }
+        guard newPassword.count >= 6 else { throw AuthError.weakPassword }
+        try await table.update(["password": newPassword]).eq("id", value: userId.uuidString).execute()
+    }
+
+    func deleteAccount() async throws {
+        guard let userId else { throw AuthError.notSignedIn }
+        try await table.delete().eq("id", value: userId.uuidString).execute()
+        signOut()
+    }
+
+    private func cacheCurrentUser() {
+        guard let userId else { return }
+        let cached = CachedUser(id: userId,
+                                email: email.isEmpty ? nil : email,
+                                fullName: firstName.isEmpty ? nil : firstName)
+        if let data = try? JSONEncoder().encode(cached) {
+            defaults.set(data, forKey: cacheKey)
+        }
+    }
+
     // MARK: - Session restore
 
     /// Restores the cached account synchronously on launch so a signed-in
@@ -239,6 +272,9 @@ final class AuthViewModel: ObservableObject {
 enum AuthError: LocalizedError {
     case notConfigured
     case emailTaken
+    case notSignedIn
+    case invalidEmail
+    case weakPassword
 
     var errorDescription: String? {
         switch self {
@@ -246,6 +282,12 @@ enum AuthError: LocalizedError {
             return "Sign-in isn't set up yet. Add your Supabase key in SupabaseConfig.swift."
         case .emailTaken:
             return "That email is already registered. Try signing in instead."
+        case .notSignedIn:
+            return "You need to be signed in to do that."
+        case .invalidEmail:
+            return "Please enter a valid email address."
+        case .weakPassword:
+            return "Password must be at least 6 characters."
         }
     }
 }

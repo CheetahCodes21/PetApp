@@ -50,7 +50,7 @@ struct CompanionProfile: Codable, Equatable {
                 .scaledToFit()
                 .foregroundStyle(color)
         case .plant:
-            LottieView(name: "FlowerIdleDisplay")
+            LottieView(name: "FlowerDefaultIdle")
         }
     }
 }

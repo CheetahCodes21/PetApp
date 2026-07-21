@@ -18,7 +18,7 @@ struct ArchiveView: View {
 
     var body: some View {
         ZStack {
-            AppColor.snow.ignoresSafeArea()
+            AppColor.screenBackground.ignoresSafeArea()
 
             if memories.isEmpty {
                 emptyState
