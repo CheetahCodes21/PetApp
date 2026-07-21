@@ -12,6 +12,7 @@
 
 import Foundation
 
+
 struct AppUserRecord: Codable {
     let id: UUID
     let email: String?
