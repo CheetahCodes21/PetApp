@@ -3,126 +3,86 @@
 //  PetApp
 //
 //  The user's chosen MemoMe companion (a pet or a plant) and its care
-//  preferences, configured during onboarding and persisted.
+//  preferences, configured during onboarding. This is the lightweight,
+//  easily-discardable draft used *while onboarding is in progress* — it's
+//  converted into the persisted `Companion` (SwiftData) once the user
+//  confirms Step 3. See CompanionprofilePersistence.swift.
 //
-
+//  Per spec: one pet design and one plant design, each recolourable —
+//  no species or plant-type picker.
+//
+ 
 import SwiftUI
 import Combine
-
+ 
 enum CompanionKind: String, Codable, CaseIterable, Identifiable {
     case pet, plant
     var id: String { rawValue }
     var title: String { self == .pet ? "Pet" : "Plant" }
     var systemImage: String { self == .pet ? "pawprint.fill" : "leaf.fill" }
 }
-
-/// Plant companions (pets reuse the existing `Companion` image assets).
-enum PlantType: String, Codable, CaseIterable, Identifiable {
-    case flower, sprout, cactus, sunflower, tulip, fern
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .flower:    return "Flower"
-        case .sprout:    return "Sprout"
-        case .cactus:    return "Cactus"
-        case .sunflower: return "Sunflower"
-        case .tulip:     return "Tulip"
-        case .fern:      return "Fern"
-        }
-    }
-
-    var emoji: String {
-        switch self {
-        case .flower:    return "🌸"
-        case .sprout:    return "🌱"
-        case .cactus:    return "🌵"
-        case .sunflower: return "🌻"
-        case .tulip:     return "🌷"
-        case .fern:      return "🪴"
-        }
-    }
-
-    /// Name of a bundled Lottie animation for this plant, if it has one.
-    /// Plants without an animation fall back to their emoji.
-    var lottieName: String? {
-        switch self {
-        case .flower: return "FlowerIdleDisplay"
-        default:      return nil
-        }
-    }
-}
-
-/// Preset accent colors for companion customisation.
-enum CompanionColor {
-    static let palette: [String] = [
-        "#6B4E9E", // purple
-        "#E4739A", // pink
-        "#F2A65A", // amber
-        "#5EAE7E", // green
-        "#5A9BD4", // blue
-        "#C0504D", // red
-    ]
-    static let defaultHex = palette[0]
-}
-
+ 
 struct CompanionProfile: Codable, Equatable {
     var kind: CompanionKind = .pet
-    var petSpecies: Companion = .dog
-    var plantType: PlantType = .sprout
-    var colorHex: String = CompanionColor.defaultHex
+    var colorOption: CompanionColorOption = .default
     var name: String = ""
-    /// How many days the feeding window lasts (1–15).
+    /// How many days the feeding window lasts (1–15). Converted to a
+    /// plain-language label before being shown anywhere in UI.
     var careFrequencyDays: Int = 7
-    /// Whether the companion shows a "sick" state if not fed in time.
     var sickIfNotFed: Bool = false
-    /// Whether the phone vibrates when the companion is fed.
     var vibrateWhenFed: Bool = true
-
-    var color: Color { Color(hex: colorHex) }
-
-    /// Emoji / art preview for the currently selected companion.
+ 
+    var color: Color { colorOption.color }
+ 
+    /// Preview of the currently selected companion, recoloured to `color`.
+    ///
+    /// TODO(Rain): only the default flower idle animation exists in the
+    /// bundle today ("FlowerIdleDisplay"). Once per-colour Lottie exports
+    /// land (e.g. "pet-purple-good-idle", "plant-purple-good-idle"), swap
+    /// the placeholder below for `LottieView(name: animationFileName)`.
+    /// The pawprint/leaf symbols here are a visible stand-in, not final art.
     @ViewBuilder
     var preview: some View {
         switch kind {
         case .pet:
-            petSpecies.image
+            Image(systemName: "pawprint.fill")
                 .resizable()
                 .scaledToFit()
+                .foregroundStyle(color)
         case .plant:
-            if let lottie = plantType.lottieName {
-                LottieView(name: lottie)
-            } else {
-                Text(plantType.emoji)
-                    .font(.system(size: 90))
-            }
+            LottieView(name: "FlowerIdleDisplay")
         }
     }
 }
-
-// MARK: - Persisted store
-
+ 
+// MARK: - Onboarding draft store
+ 
 @MainActor
 final class CompanionStore: ObservableObject {
     private let defaults = UserDefaults.standard
-    private let key = "companion.profile"
-
+    private let key = "companion.profile.draft"
+ 
     @Published var profile: CompanionProfile? {
         didSet { persist() }
     }
-
+ 
     init() {
         if let data = defaults.data(forKey: key),
            let decoded = try? JSONDecoder().decode(CompanionProfile.self, from: data) {
             profile = decoded
         }
     }
-
+ 
     func save(_ profile: CompanionProfile) {
         self.profile = profile
     }
-
+ 
+    /// Clears the draft once it's been converted into a persisted `Companion`
+    /// at the end of onboarding — call this right after `makeCompanion(owner:)`.
+    func clearDraft() {
+        profile = nil
+    }
+ 
     private func persist() {
         guard let profile,
               let data = try? JSONEncoder().encode(profile) else {
