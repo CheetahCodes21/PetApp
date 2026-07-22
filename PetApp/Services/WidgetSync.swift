@@ -36,7 +36,7 @@ enum WidgetSync {
         let data = PetWidgetData(
             companionAssetName: asset,
             userFirstName: name.trimmingCharacters(in: .whitespaces).isEmpty ? "friend" : name,
-            todaysQuestion: DailyPrompts.all[DailyPrompts.todayIndex],
+            todaysQuestion: DailyPrompts.todayAnchor.anchor,
             isHungry: (companion?.currentHungerState ?? "good") != "good",
             hungerLevel: hungerLevel,
             dayStreak: companion?.streakCount ?? 0,

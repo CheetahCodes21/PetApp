@@ -29,13 +29,19 @@ enum TranscriptionService {
         let status = current == .notDetermined ? await requestAuthorization() : current
         guard status == .authorized else { throw TranscriptionError.notAuthorized }
 
+        // Transcription must stay on-device (KAN-38, and the privacy disclosure
+        // promises "the audio is not sent to a server"). If the device can't do
+        // on-device recognition — e.g. the Simulator, or a locale without the
+        // dictation model installed — we report it as unavailable rather than
+        // silently falling back to Apple's servers.
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: languageCode)),
-              recognizer.isAvailable else {
+              recognizer.isAvailable,
+              recognizer.supportsOnDeviceRecognition else {
             throw TranscriptionError.unavailable
         }
 
         let request = SFSpeechURLRecognitionRequest(url: url)
-        request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
+        request.requiresOnDeviceRecognition = true
         request.shouldReportPartialResults = false
 
         let guardBox = ResumeGuard()
