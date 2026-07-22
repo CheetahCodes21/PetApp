@@ -6,16 +6,16 @@
 //  text size, theme, language, and info rows. Text size, theme, and language
 //  are wired to AppSettings and applied app-wide from the root.
 //
-
+ 
 import SwiftUI
-
+ 
 struct SettingsView: View {
     var showsBack: Bool = true
-
+ 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var auth: AuthViewModel
     @Environment(\.dismiss) private var dismiss
-
+ 
     @State private var editingName = false
     @State private var editingBirthday = false
     @State private var nameDraft = ""
@@ -24,13 +24,14 @@ struct SettingsView: View {
     @State private var emailDraft = ""
     @State private var editingPassword = false
     @State private var passwordDraft = ""
+    @State private var confirmPasswordDraft = ""
     @State private var confirmDelete = false
     @State private var accountError: String?
-
+ 
     var body: some View {
         ZStack {
             AppColor.screenBackground.ignoresSafeArea()
-
+ 
             ScrollView {
                 VStack(spacing: Spacing.lg) {
                     header
@@ -41,7 +42,7 @@ struct SettingsView: View {
                         Text("Sign out")
                     }
                     .buttonStyle(OutlinedButtonStyle())
-
+ 
                     Button(role: .destructive) {
                         confirmDelete = true
                     } label: {
@@ -70,8 +71,11 @@ struct SettingsView: View {
             }
         }
         .alert("My name", isPresented: $editingName) {
-            TextField("Your name", text: $nameDraft)
-            Button("Save") { settings.name = nameDraft }
+            TextField("Your name", text: Binding(
+                get: { nameDraft },
+                set: { nameDraft = $0.filter { $0.isLetter || $0.isWhitespace } }
+            ))
+            Button("Save") { settings.name = nameDraft.trimmingCharacters(in: .whitespaces) }
             Button("Cancel", role: .cancel) { }
         }
         .sheet(isPresented: $editingBirthday) {
@@ -93,10 +97,12 @@ struct SettingsView: View {
         }
         .alert("Edit password", isPresented: $editingPassword) {
             SecureField("New password", text: $passwordDraft)
+            SecureField("Confirm new password", text: $confirmPasswordDraft)
             Button("Save") { Task { await savePassword() } }
+                .disabled(passwordDraft.isEmpty || passwordDraft != confirmPasswordDraft)
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("At least 6 characters.")
+            Text("At least 6 characters. Both fields must match.")
         }
         .confirmationDialog("Delete your account?",
                             isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -113,9 +119,9 @@ struct SettingsView: View {
             Text(accountError ?? "")
         }
     }
-
+ 
     // MARK: - Account actions
-
+ 
     private func saveEmail() async {
         do {
             try await auth.updateEmail(to: emailDraft)
@@ -124,16 +130,22 @@ struct SettingsView: View {
                 ?? "We couldn't update your email. That address may already be in use."
         }
     }
-
+ 
     private func savePassword() async {
+        guard passwordDraft == confirmPasswordDraft else {
+            accountError = "Those passwords don't match. Please try again."
+            return
+        }
         do {
             try await auth.updatePassword(to: passwordDraft)
+            passwordDraft = ""
+            confirmPasswordDraft = ""
         } catch {
             accountError = (error as? LocalizedError)?.errorDescription
                 ?? "We couldn't update your password. Please try again."
         }
     }
-
+ 
     private func deleteAccount() async {
         do {
             try await auth.deleteAccount()
@@ -142,9 +154,9 @@ struct SettingsView: View {
                 ?? "We couldn't delete your account. Please try again."
         }
     }
-
+ 
     // MARK: - Header
-
+ 
     private var header: some View {
         VStack(spacing: Spacing.sm) {
             ZStack {
@@ -163,9 +175,9 @@ struct SettingsView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Settings")
     }
-
+ 
     // MARK: - Settings card
-
+ 
     private var card: some View {
         VStack(spacing: 0) {
             // My name
@@ -179,9 +191,9 @@ struct SettingsView: View {
                 nameDraft = settings.name
                 editingName = true
             }
-
+ 
             Divider().overlay(AppColor.textSecondary.opacity(0.25))
-
+ 
             // My birthday
             SettingRow {
                 DisclosureContent(title: "My birthday", subtitle: formattedBirthday)
@@ -191,9 +203,9 @@ struct SettingsView: View {
             } action: {
                 editingBirthday = true
             }
-
+ 
             Divider().overlay(AppColor.textSecondary.opacity(0.25))
-
+ 
             // Email
             SettingRow {
                 DisclosureContent(title: "Email",
@@ -206,9 +218,9 @@ struct SettingsView: View {
                 emailDraft = auth.email
                 editingEmail = true
             }
-
+ 
             Divider().overlay(AppColor.textSecondary.opacity(0.25))
-
+ 
             // Password
             SettingRow {
                 DisclosureContent(title: "Password", subtitle: "••••••••")
@@ -218,22 +230,45 @@ struct SettingsView: View {
                     .foregroundStyle(AppColor.textPrimary)
             } action: {
                 passwordDraft = ""
+                confirmPasswordDraft = ""
                 editingPassword = true
             }
-
+ 
             Divider().overlay(AppColor.textSecondary.opacity(0.25))
-
+ 
             // Lock screen notification
             ToggleRow(title: "Lock screen notification",
                       isOn: $settings.lockScreenNotifications)
-
+ 
             Divider().overlay(AppColor.textSecondary.opacity(0.25))
-
+ 
             // Text-to-voice
             ToggleRow(title: "Text-to-voice", isOn: $settings.textToVoice)
-
+ 
             Divider().overlay(AppColor.textSecondary.opacity(0.25))
-
+ 
+            // Voice speed
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                Text("Voice speed")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(AppColor.textPrimary)
+                Slider(value: $settings.voiceSpeed, in: 0...1)
+                    .tint(AppColor.ninja)
+                Button {
+                    SpeechService.shared.speak(
+                        "Hello, this is how I will read your memories.",
+                        speed: settings.voiceSpeed,
+                        languageCode: settings.language.rawValue)
+                } label: {
+                    Label("Test voice", systemImage: "speaker.wave.2.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppColor.ninja)
+                }
+            }
+            .padding(.vertical, Spacing.md)
+ 
+            Divider().overlay(AppColor.textSecondary.opacity(0.25))
+ 
             // Text size
             HStack {
                 Text("Text size")
@@ -243,9 +278,9 @@ struct SettingsView: View {
                 TextSizeSelector(selection: $settings.textSize)
             }
             .padding(.vertical, Spacing.md)
-
+ 
             Divider().overlay(AppColor.textSecondary.opacity(0.25))
-
+ 
             // Theme
             HStack {
                 Text("Theme")
@@ -255,9 +290,9 @@ struct SettingsView: View {
                 ThemeSelector(selection: $settings.theme)
             }
             .padding(.vertical, Spacing.md)
-
+ 
             Divider().overlay(AppColor.textSecondary.opacity(0.25))
-
+ 
             // Language
             HStack {
                 Text("Language")
@@ -267,9 +302,9 @@ struct SettingsView: View {
                 LanguageSelector(selection: $settings.language)
             }
             .padding(.vertical, Spacing.md)
-
+ 
             Divider().overlay(AppColor.textSecondary.opacity(0.25))
-
+ 
             // About / Version info
             SettingRow {
                 Text("About / Version Info")
@@ -278,9 +313,9 @@ struct SettingsView: View {
             } trailing: {
                 Image(systemName: "chevron.right").foregroundStyle(AppColor.textSecondary)
             } action: { }
-
+ 
             Divider().overlay(AppColor.textSecondary.opacity(0.25))
-
+ 
             // Help & Support
             SettingRow {
                 Text("Help & Support")
@@ -295,7 +330,7 @@ struct SettingsView: View {
         .background(AppColor.ninja.opacity(0.18),
                     in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
-
+ 
     private var formattedBirthday: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "d MMMM yyyy"
@@ -303,14 +338,14 @@ struct SettingsView: View {
         return formatter.string(from: settings.birthday)
     }
 }
-
+ 
 // MARK: - Row building blocks
-
+ 
 private struct SettingRow<Content: View, Trailing: View>: View {
     @ViewBuilder var content: Content
     @ViewBuilder var trailing: Trailing
     var action: () -> Void
-
+ 
     var body: some View {
         Button(action: action) {
             HStack {
@@ -324,11 +359,11 @@ private struct SettingRow<Content: View, Trailing: View>: View {
         .buttonStyle(.plain)
     }
 }
-
+ 
 private struct DisclosureContent: View {
     let title: String
     let subtitle: String
-
+ 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
@@ -340,11 +375,11 @@ private struct DisclosureContent: View {
         }
     }
 }
-
+ 
 private struct ToggleRow: View {
     let title: String
     @Binding var isOn: Bool
-
+ 
     var body: some View {
         Toggle(isOn: $isOn) {
             Text(title)
@@ -355,12 +390,12 @@ private struct ToggleRow: View {
         .padding(.vertical, Spacing.md)
     }
 }
-
+ 
 // MARK: - Text size selector (3 levels)
-
+ 
 private struct TextSizeSelector: View {
     @Binding var selection: AppTextSize
-
+ 
     var body: some View {
         HStack(spacing: 0) {
             cell(.small, size: 16)
@@ -372,7 +407,7 @@ private struct TextSizeSelector: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Text size")
     }
-
+ 
     private func cell(_ value: AppTextSize, size: CGFloat) -> some View {
         Button {
             selection = value
@@ -389,7 +424,7 @@ private struct TextSizeSelector: View {
         .accessibilityLabel(label(for: value))
         .accessibilityAddTraits(selection == value ? [.isSelected] : [])
     }
-
+ 
     private func label(for value: AppTextSize) -> String {
         switch value {
         case .small: return "Small text"
@@ -398,12 +433,12 @@ private struct TextSizeSelector: View {
         }
     }
 }
-
+ 
 // MARK: - Theme selector
-
+ 
 private struct ThemeSelector: View {
     @Binding var selection: AppTheme
-
+ 
     var body: some View {
         HStack(spacing: 0) {
             segment("Light", value: .light)
@@ -412,7 +447,7 @@ private struct ThemeSelector: View {
         .background(AppColor.ninja.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
-
+ 
     private func segment(_ title: String, value: AppTheme) -> some View {
         Button {
             selection = value
@@ -430,12 +465,12 @@ private struct ThemeSelector: View {
         .accessibilityAddTraits(selection == value ? [.isSelected] : [])
     }
 }
-
+ 
 // MARK: - Language selector
-
+ 
 private struct LanguageSelector: View {
     @Binding var selection: AppLanguage
-
+ 
     var body: some View {
         Menu {
             ForEach(AppLanguage.allCases) { language in
@@ -465,13 +500,13 @@ private struct LanguageSelector: View {
         .accessibilityLabel("Language, currently \(selection.displayName)")
     }
 }
-
+ 
 // MARK: - Birthday editor
-
+ 
 private struct BirthdayEditor: View {
     @Binding var birthday: Date
     @Environment(\.dismiss) private var dismiss
-
+ 
     var body: some View {
         NavigationStack {
             VStack {
@@ -493,9 +528,10 @@ private struct BirthdayEditor: View {
         .presentationDetents([.medium, .large])
     }
 }
-
+ 
 #Preview {
     NavigationStack {
         SettingsView().environmentObject(AppSettings())
     }
 }
+ 

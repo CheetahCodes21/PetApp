@@ -39,17 +39,24 @@ struct ArchiveView: View {
         allMemories.contains { !$0.isDeleted }
     }
  
+    private var hasAnyFavourites: Bool {
+        allMemories.contains { !$0.isDeleted && $0.isFavourite }
+    }
+ 
     var body: some View {
         NavigationStack {
             ZStack {
                 AppColor.screenBackground.ignoresSafeArea()
  
                 VStack(spacing: 0) {
+                    header
                     tabPicker
                     searchAndFilterBar
  
-                    if !hasAnyMemories {
+                    if selectedTab == .all && !hasAnyMemories {
                         emptyState
+                    } else if selectedTab == .favourites && !hasAnyFavourites {
+                        noFavouritesState
                     } else if memories.isEmpty {
                         noResultsState
                     } else {
@@ -57,9 +64,20 @@ struct ArchiveView: View {
                     }
                 }
             }
-            .navigationTitle("Archive")
+            .navigationBarHidden(true)
             .sheet(isPresented: $showDatePicker) { datePickerSheet }
         }
+    }
+ 
+    // MARK: - Header
+ 
+    private var header: some View {
+        Text("Archive")
+            .font(.largeTitle.weight(.bold))
+            .foregroundStyle(AppColor.textPrimary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.md)
     }
  
     // MARK: - Tabs
@@ -273,6 +291,25 @@ struct ArchiveView: View {
         .padding()
     }
  
+    private var noFavouritesState: some View {
+        VStack(spacing: Spacing.md) {
+            Spacer()
+            Image(systemName: "star")
+                .font(.system(size: 56))
+                .foregroundStyle(AppColor.ninja.opacity(0.6))
+            Text("No favourites yet")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(AppColor.textPrimary)
+            Text("Tap the star on a memory to keep it here for easy access.")
+                .font(.body)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(AppColor.textSecondary)
+                .padding(.horizontal, Spacing.xl)
+            Spacer()
+        }
+        .padding()
+    }
+ 
     private var noResultsState: some View {
         VStack(spacing: Spacing.md) {
             Spacer()
@@ -345,4 +382,3 @@ struct DateFilter {
 #Preview {
     ArchiveView()
 }
- 
