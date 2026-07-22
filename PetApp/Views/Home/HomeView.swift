@@ -518,6 +518,7 @@ private struct EditCompanionSheet: View {
  
 #Preview {
     HomeView()
+        .environmentObject(AppSettings())
         .modelContainer(for: [Companion.self, Memory.self, User.self], inMemory: true)
 }
  
