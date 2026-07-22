@@ -87,7 +87,7 @@ final class AuthViewModel: ObservableObject {
                 let normalizedEmail = loginIdentifier.trimmingCharacters(in: .whitespaces).lowercased()
                 let record: AppUserRecord = try await table
                     .select("id, email, full_name, apple_sub")
-                    .ilike("email", value: normalizedEmail)   // case-insensitive email match
+                    .ilike("email", pattern: normalizedEmail)   // case-insensitive email match
                     .eq("password", value: loginPassword)
                     .single()
                     .execute()
