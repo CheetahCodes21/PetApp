@@ -19,8 +19,15 @@ struct HomeView: View {
     @Query private var allMemories: [Memory]
  
     @State private var promptIndex = DailyPrompts.todayIndex
+    @State private var showDailyQuestion = false
     @State private var showRecording = false
     @State private var showEditCompanion = false
+
+    /// The question resolved by the daily-question sheet, then answered in the
+    /// recorder. `pendingQuestion` holds it until the sheet has dismissed so the
+    /// recorder is only presented once the sheet is fully gone.
+    @State private var resolvedQuestion: String?
+    @State private var pendingQuestion: String?
  
     private let amber = Color(hex: "#F7C873")
     private let amberSoft = Color(hex: "#FBE6BE")
@@ -51,7 +58,25 @@ struct HomeView: View {
                 EditCompanionSheet(companion: companion)
             }
         }
-        .memoryRecorder(isPresented: $showRecording, question: DailyPrompts.all[promptIndex]) { saved in
+        .sheet(isPresented: $showDailyQuestion, onDismiss: {
+            // Promote to the recorder only after the question sheet has fully
+            // dismissed, so the two presentations don't collide.
+            if let pendingQuestion {
+                resolvedQuestion = pendingQuestion
+                self.pendingQuestion = nil
+                showRecording = true
+            }
+        }) {
+            DailyQuestionView(
+                prompt: DailyPrompts.anchors[promptIndex],
+                onRecord: { question in
+                    pendingQuestion = question
+                    showDailyQuestion = false
+                },
+                onCancel: { showDailyQuestion = false }
+            )
+        }
+        .memoryRecorder(isPresented: $showRecording, question: resolvedQuestion) { saved in
             _ = try? saved.persist(in: modelContext, companion: companion)
         }
         .recordingRecovery { saved in
@@ -245,7 +270,7 @@ struct HomeView: View {
                     .foregroundStyle(AppColor.textSecondary)
             }
  
-            Text(LocalizedStringKey(DailyPrompts.all[promptIndex]))
+            Text(LocalizedStringKey(DailyPrompts.anchors[promptIndex].anchor))
                 .font(.headline)
                 .foregroundStyle(AppColor.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -258,7 +283,7 @@ struct HomeView: View {
  
             Button {
                 withAnimation {
-                    promptIndex = (promptIndex + 1) % DailyPrompts.all.count
+                    promptIndex = (promptIndex + 1) % DailyPrompts.anchors.count
                 }
             } label: {
                 Image(systemName: "arrow.triangle.2.circlepath")
@@ -290,7 +315,7 @@ struct HomeView: View {
     private var recordButton: some View {
         VStack(spacing: Spacing.sm) {
             Button {
-                showRecording = true
+                showDailyQuestion = true
             } label: {
                 Image(systemName: "mic.fill")
                     .font(.system(size: 44))
