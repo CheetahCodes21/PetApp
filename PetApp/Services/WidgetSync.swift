@@ -22,51 +22,39 @@ enum WidgetSync {
         let live = memories.filter { !$0.isDeleted }
         let thisMonth = live.filter { calendar.isDate($0.date, equalTo: now, toGranularity: .month) }.count
 
-        let hungerLevel: Int
-        switch companion?.currentHungerState {
-        case "veryHungry": hungerLevel = 1
-        case "hungry":     hungerLevel = 3
-        default:           hungerLevel = 5
+        // Hunger derived from the care window (1...3 hearts → widget's 0...5).
+        let hearts = companion?.hungerHearts ?? 3
+        let hungerLevel = [1: 1, 2: 3, 3: 5][hearts] ?? 5
+
+        // Streak = consecutive days (ending today) with at least one memory.
+        let days = Set(live.map { calendar.startOfDay(for: $0.date) })
+        var streak = 0
+        var cursor = calendar.startOfDay(for: now)
+        while days.contains(cursor) {
+            streak += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = previous
         }
 
-        // NOTE: assumes CompanionKind has a `.plant` case per the comment in
-        // Companion.swift ("one pet design and one plant design"). Update
-        // this comparison if the actual case name differs.
-        let isPlant = companion?.kind == .plant
-
-        // Pet artwork asset. Plants have no static image (Lottie-only), so
-        // widgets/Live Activity fall back to a system leaf icon when isPlant
-        // is true — companionAssetName is unused in that case.
+        // Pet artwork asset (plants fall back to the default pet image in the
+        // widget, since plant companions are Lottie-only — no static image).
         let asset = (PetSpecies(rawValue: companion?.petSpeciesRaw ?? "") ?? .default).assetName
-        let isHungry = (companion?.currentHungerState ?? "good") != "good"
 
         let data = PetWidgetData(
             companionAssetName: asset,
             userFirstName: name.trimmingCharacters(in: .whitespaces).isEmpty ? "friend" : name,
             todaysQuestion: DailyPrompts.all[DailyPrompts.todayIndex],
-            isHungry: isHungry,
+            isHungry: hearts < 3,
             hungerLevel: hungerLevel,
-            dayStreak: companion?.streakCount ?? 0,
+            dayStreak: streak,
             memoriesSavedTotal: live.count,
             memoriesThisMonth: thisMonth,
-            memoriesGoalThisMonth: 20,
-            isPlant: isPlant
+            memoriesGoalThisMonth: 20
         )
 
-        if !isPlant {
-            writeCompanionImage(assetName: asset)
-        }
+        writeCompanionImage(assetName: asset)
         PetWidgetStore.save(data)
         WidgetCenter.shared.reloadAllTimelines()
-
-        Task {
-            await LiveActivityManager.sync(
-                companionAssetName: asset,
-                isHungry: isHungry,
-                hungerLevel: hungerLevel,
-                isPlant: isPlant
-            )
-        }
     }
 
     /// Copies the companion's artwork into the App Group container so the

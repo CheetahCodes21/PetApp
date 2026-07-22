@@ -64,6 +64,9 @@ struct RecordingView: View {
         VStack(spacing: Spacing.lg) {
             header
             Spacer(minLength: Spacing.md)
+            if let question, !question.isEmpty {
+                questionBubble(question)
+            }
             timerLabel
             LevelMeterView(level: recorder.level,
                            isActive: recorder.phase == .recording)
@@ -88,15 +91,24 @@ struct RecordingView: View {
                 .foregroundStyle(AppColor.textSecondary)
             Spacer()
         }
-        .overlay(alignment: .center) {
-            if let question, !question.isEmpty {
-                Text(question)
-                    .font(.title3.weight(.semibold))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(AppColor.textPrimary)
-                    .padding(.horizontal, Spacing.xl)
-            }
-        }
+    }
+
+    /// The journalling question, shown in a soft white card centred above the
+    /// timer — same bubble treatment as the daily prompt on Home, so it reads as
+    /// part of the app rather than floating loose text.
+    private func questionBubble(_ question: String) -> some View {
+        Text(question)
+            .font(.title3.weight(.semibold))
+            .multilineTextAlignment(.center)
+            .foregroundStyle(AppColor.textPrimary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Spacing.md)
+            .padding(.horizontal, Spacing.lg)
+            .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(AppColor.textSecondary.opacity(0.15), lineWidth: 1)
+            )
     }
 
     // MARK: - Timer & status

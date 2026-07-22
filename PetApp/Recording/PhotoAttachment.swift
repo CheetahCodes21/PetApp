@@ -25,6 +25,11 @@ struct PhotoAttachmentView: View {
         UIImagePickerController.isSourceTypeAvailable(.camera)
     }
 
+    // LocalizedStringKey so both labels stay in the string catalog for translation.
+    private var libraryButtonTitle: LocalizedStringKey {
+        image == nil ? "Add Photo" : "Change"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("Photo (optional)")
@@ -32,29 +37,41 @@ struct PhotoAttachmentView: View {
                 .foregroundStyle(AppColor.textPrimary)
 
             if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
+                // A steady 4:3 frame so any photo (portrait or landscape) shows
+                // at a consistent, pleasing proportion rather than a fixed height
+                // that looks off across screen widths.
+                Color.clear
+                    .aspectRatio(4 / 3, contentMode: .fit)
+                    .overlay {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 200)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .accessibilityLabel("Attached photo")
             }
 
-            HStack(spacing: Spacing.md) {
+            // Stacked full-width buttons: three side-by-side were too narrow and
+            // broke words mid-way. Vertical keeps each label on one line with a
+            // large, easy tap target, and gives a clear primary → destructive order.
+            VStack(spacing: Spacing.sm) {
                 PhotosPicker(selection: $libraryItem, matching: .images) {
-                    Label(image == nil ? "Choose from Library" : "Change from Library",
-                          systemImage: "photo.on.rectangle")
+                    Label(libraryButtonTitle, systemImage: "photo.on.rectangle")
+                        .frame(maxWidth: .infinity)
                 }
-                .foregroundStyle(AppColor.ninja)
+                .buttonStyle(.borderedProminent)
+                .tint(AppColor.ninja)
 
                 if cameraAvailable {
                     Button {
                         takePhoto()
                     } label: {
                         Label("Take Photo", systemImage: "camera")
+                            .frame(maxWidth: .infinity)
                     }
-                    .foregroundStyle(AppColor.ninja)
+                    .buttonStyle(.bordered)
+                    .tint(AppColor.ninja)
                 }
 
                 if image != nil {
@@ -62,10 +79,15 @@ struct PhotoAttachmentView: View {
                         image = nil
                     } label: {
                         Label("Remove", systemImage: "trash")
+                            .frame(maxWidth: .infinity)
                     }
+                    .buttonStyle(.bordered)
+                    .tint(.red)
                 }
             }
-            .font(.callout.weight(.medium))
+            .font(.callout.weight(.semibold))
+            .controlSize(.large)
+            .lineLimit(1)
 
             if cameraDenied {
                 deniedHint

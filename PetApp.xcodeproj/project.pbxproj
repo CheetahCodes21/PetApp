@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		AA0000000000000000000001 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000002 /* Lottie */; };
 		AA0000000000000000000011 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000012 /* Supabase */; };
+		AA0000000000000000000021 /* RiveRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000022 /* RiveRuntime */; };
 		B7B741AB300DD30C00C914DC /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B7B741AA300DD30C00C914DC /* WidgetKit.framework */; };
 		B7B741AD300DD30C00C914DC /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B7B741AC300DD30C00C914DC /* SwiftUI.framework */; };
 		B7B741BC300DD30C00C914DC /* PetAppWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B7B741A8300DD30C00C914DC /* PetAppWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -89,6 +90,7 @@
 			files = (
 				AA0000000000000000000001 /* Lottie in Frameworks */,
 				AA0000000000000000000011 /* Supabase in Frameworks */,
+				AA0000000000000000000021 /* RiveRuntime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -156,6 +158,7 @@
 			packageProductDependencies = (
 				AA0000000000000000000002 /* Lottie */,
 				AA0000000000000000000012 /* Supabase */,
+				AA0000000000000000000022 /* RiveRuntime */,
 			);
 			productName = PetApp;
 			productReference = 310B2D8B300879A600B1894B /* PetApp.app */;
@@ -218,6 +221,7 @@
 			packageReferences = (
 				AA0000000000000000000003 /* XCRemoteSwiftPackageReference "lottie-ios" */,
 				AA0000000000000000000013 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				AA0000000000000000000023 /* XCRemoteSwiftPackageReference "rive-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 310B2D8C300879A600B1894B /* Products */;
@@ -595,6 +599,16 @@
 				kind = upToNextMajorVersion;
 				minimumVersion = 2.0.0;
 			};
+			traits = (
+			);
+		};
+		AA0000000000000000000023 /* XCRemoteSwiftPackageReference "rive-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/rive-app/rive-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.0.0;
+			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
@@ -608,6 +622,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AA0000000000000000000013 /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Supabase;
+		};
+		AA0000000000000000000022 /* RiveRuntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA0000000000000000000023 /* XCRemoteSwiftPackageReference "rive-ios" */;
+			productName = RiveRuntime;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

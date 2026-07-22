@@ -20,7 +20,7 @@ struct GetStartedStep: View {
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
-
+ 
     private let passwordRegex =
     "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-={}\\[\\]|:;\"'<>,.?/~`]).{8,}$"
     @State private var working = false
@@ -82,22 +82,22 @@ struct GetStartedStep: View {
             )
             
             VStack(alignment: .leading, spacing: 6) {
-
+ 
                 validationRow(password.count >= 8,
                               "At least 8 characters")
-
+ 
                 validationRow(password.range(of: "[A-Z]", options: .regularExpression) != nil,
                               "One uppercase letter")
-
+ 
                 validationRow(password.range(of: "[a-z]", options: .regularExpression) != nil,
                               "One lowercase letter")
-
+ 
                 validationRow(password.range(of: "[0-9]", options: .regularExpression) != nil,
                               "One number")
-
+ 
                 validationRow(password.range(of: "[^A-Za-z0-9]", options: .regularExpression) != nil,
                               "One special character")
-
+ 
             }
             .font(.subheadline)
  
@@ -119,12 +119,12 @@ struct GetStartedStep: View {
     }
  
     private func createAccount() {
-
+ 
         guard isValidEmail else {
             error = "Please enter a valid email address."
             return
         }
-
+ 
         guard isValidPassword else {
             error = """
     Password must contain:
@@ -136,15 +136,15 @@ struct GetStartedStep: View {
     """
             return
         }
-
+ 
         guard password == confirmPassword else {
             error = "Passwords do not match."
             return
         }
-
+ 
         working = true
         error = nil
-
+ 
         Task {
             do {
                 try await auth.signUpWithEmail(
@@ -152,10 +152,10 @@ struct GetStartedStep: View {
                     password: password,
                     fullName: fullName
                 )
-
+ 
                 working = false
                 onNext()
-
+ 
             } catch {
                 working = false
                 self.error = (error as? LocalizedError)?.errorDescription
@@ -188,12 +188,12 @@ struct GetStartedStep: View {
         return NSPredicate(format: "SELF MATCHES %@", regex)
             .evaluate(with: email)
     }
-
+ 
     private var isValidPassword: Bool {
         NSPredicate(format: "SELF MATCHES %@", passwordRegex)
             .evaluate(with: password)
     }
-
+ 
     private var canSubmit: Bool {
         isValidEmail &&
         isValidPassword &&
@@ -205,7 +205,7 @@ struct GetStartedStep: View {
         HStack(spacing: 8) {
             Image(systemName: valid ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(valid ? .green : .gray)
-
+ 
             Text(LocalizedStringKey(text))
                 .font(.caption)
                 .foregroundStyle(AppColor.textSecondary)
@@ -308,8 +308,10 @@ struct PersonalDetailsStep: View {
                      primaryEnabled: !fullName.trimmingCharacters(in: .whitespaces).isEmpty,
                      onPrimary: onNext) {
             VStack(alignment: .leading, spacing: Spacing.lg) {
-                LabeledField(label: "Full name", text: $fullName,
-                             textContentType: .name)
+                LabeledField(label: "Full name", text: Binding(
+                    get: { fullName },
+                    set: { fullName = $0.filter { $0.isLetter || $0.isWhitespace } }
+                ), textContentType: .name)
  
                 VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text("Date of birth")
@@ -348,7 +350,7 @@ struct AccessibilityStep: View {
                 labeled("Theme") {
                     SegmentedTheme(selection: $settings.theme)
                 }
-
+ 
                 labeled("Voice speed") {
                     VStack(spacing: Spacing.sm) {
                         Slider(value: $settings.voiceSpeed, in: 0...1)
@@ -422,7 +424,7 @@ struct CompanionStep: View {
                 LabeledField(label: "Companion name", text: $profile.name)
  
                 // Care frequency
-                sectionLabel("Feed every \(profile.careFrequencyDays) day\(profile.careFrequencyDays == 1 ? "" : "s")")
+                sectionLabel("\(profile.kind == .pet ? "Feed" : "Water") every \(profile.careFrequencyDays) day\(profile.careFrequencyDays == 1 ? "" : "s")")
                 Slider(
                     value: Binding(
                         get: { Double(profile.careFrequencyDays) },
