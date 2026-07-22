@@ -1,4 +1,3 @@
-
 //
 //  MemoryDetailView.swift
 //  PetApp
@@ -7,6 +6,11 @@
 //  playback, plus favourite, delete (with confirmation), and share. Editing
 //  is inline — there's no separate "edit mode" screen, matching how the
 //  rest of the app (e.g. onboarding) handles editable forms.
+//
+//  Save/Delete are laid out in the normal scrollable content, not a
+//  `.safeAreaInset` bar — the app's custom bottom tab bar (MainTabView)
+//  stays pinned across all pushed navigation, and stacking a second bottom
+//  inset on top of it was pushing these buttons out of view.
 //
  
 import SwiftUI
@@ -25,8 +29,19 @@ struct MemoryDetailView: View {
     @State private var showDeleteConfirmation = false
     @State private var showShareSheet = false
     @State private var showPhotoPicker = false
+    @State private var showReRecord = false
     @State private var showSavedConfirmation = false
     @StateObject private var player = MemoryAudioPlayer()
+ 
+    // Snapshot of the last-saved values, captured once on appear, so Cancel
+    // can revert in-memory edits (this is a live SwiftData object — edits
+    // apply immediately, before context.save() is ever called).
+    @State private var hasCapturedOriginal = false
+    @State private var originalTitle = ""
+    @State private var originalTranscript = ""
+    @State private var originalDate = Date()
+    @State private var originalPhotoFileName: String?
+    @State private var originalAudioFileName = ""
  
     var body: some View {
         ScrollView {
@@ -36,8 +51,10 @@ struct MemoryDetailView: View {
                 dateField
                 transcriptField
                 audioSection
+                actionButtons
             }
             .padding(Spacing.lg)
+            .padding(.bottom, Spacing.xxl)
         }
         .background(AppColor.screenBackground.ignoresSafeArea())
         .navigationTitle(memory.title.isEmpty ? "Memory" : memory.title)
@@ -62,7 +79,6 @@ struct MemoryDetailView: View {
                 }
             }
         }
-        .safeAreaInset(edge: .bottom) { bottomBar }
         .overlay(alignment: .top) {
             if showSavedConfirmation { savedBanner }
         }
@@ -84,6 +100,10 @@ struct MemoryDetailView: View {
                 attachPhoto(image)
             }
         }
+        .memoryRecorder(isPresented: $showReRecord, question: "Record a new version of \"\(memory.title)\"") { saved in
+            replaceAudio(with: saved)
+        }
+        .onAppear { captureOriginalIfNeeded() }
         .onDisappear { player.stop() }
     }
  
@@ -91,43 +111,50 @@ struct MemoryDetailView: View {
  
     @ViewBuilder
     private var photoSection: some View {
-        Group {
-            if let photoFileName = memory.photoFileName,
-               let uiImage = UIImage(contentsOfFile: FileStorageService.photoURL(for: photoFileName).path) {
-                ZStack(alignment: .topTrailing) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(height: 200)
-                        .frame(maxWidth: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
- 
-                    Button {
-                        removePhoto()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.white, .black.opacity(0.5))
-                            .padding(8)
-                    }
-                    .accessibilityLabel("Delete photo")
-                }
-            } else {
-                Button {
-                    showPhotoPicker = true
-                } label: {
-                    HStack {
-                        Image(systemName: "camera.fill")
-                        Text("Add a photo")
-                    }
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(AppColor.ninja)
+        if let photoFileName = memory.photoFileName,
+           let uiImage = UIImage(contentsOfFile: FileStorageService.photoURL(for: photoFileName).path) {
+            ZStack(alignment: .topTrailing) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(height: 200)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 80)
-                    .background(RoundedRectangle(cornerRadius: 18).fill(AppColor.snow))
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+ 
+                HStack(spacing: Spacing.xs) {
+                    photoIconButton(systemName: "pencil.circle.fill", label: "Change photo") {
+                        showPhotoPicker = true
+                    }
+                    photoIconButton(systemName: "trash.circle.fill", label: "Delete photo") {
+                        removePhoto()
+                    }
                 }
+                .padding(8)
+            }
+        } else {
+            Button {
+                showPhotoPicker = true
+            } label: {
+                HStack {
+                    Image(systemName: "camera.fill")
+                    Text("Add a photo")
+                }
+                .font(.body.weight(.medium))
+                .foregroundStyle(AppColor.ninja)
+                .frame(maxWidth: .infinity)
+                .frame(height: 80)
+                .background(RoundedRectangle(cornerRadius: 18).fill(AppColor.snow))
             }
         }
+    }
+ 
+    private func photoIconButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.title2)
+                .foregroundStyle(.white, .black.opacity(0.5))
+        }
+        .accessibilityLabel(label)
     }
  
     private var titleField: some View {
@@ -153,9 +180,7 @@ struct MemoryDetailView: View {
  
     private var transcriptField: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("What you shared")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(AppColor.textSecondary)
+            fieldLabel("What you shared")
             TextEditor(text: Binding(
                 get: { memory.transcript },
                 set: { memory.transcript = $0; markDirty() }
@@ -167,7 +192,8 @@ struct MemoryDetailView: View {
     }
  
     private var audioSection: some View {
-        VStack(spacing: Spacing.sm) {
+        VStack(alignment: .leading, spacing: 4) {
+            fieldLabel("Recording")
             HStack(spacing: Spacing.md) {
                 Button {
                     player.togglePlayback(fileName: memory.audioFileName)
@@ -180,29 +206,54 @@ struct MemoryDetailView: View {
  
                 ProgressView(value: player.progress)
                     .tint(AppColor.ninja)
+ 
+                Button {
+                    player.stop()
+                    showReRecord = true
+                } label: {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(AppColor.ninja)
+                }
+                .accessibilityLabel("Re-record")
             }
+            .padding(Spacing.sm)
+            .background(RoundedRectangle(cornerRadius: 12).fill(AppColor.snow))
         }
-        .padding(Spacing.sm)
-        .background(RoundedRectangle(cornerRadius: 12).fill(AppColor.snow))
+    }
+ 
+    /// Small pencil next to a label, to visually flag that the field below
+    /// it is directly editable (there's no separate edit-mode toggle).
+    private func fieldLabel(_ text: String) -> some View {
+        HStack(spacing: 4) {
+            Text(text)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppColor.textSecondary)
+            Image(systemName: "pencil")
+                .font(.caption2)
+                .foregroundStyle(AppColor.textSecondary)
+        }
     }
  
     private func fieldContainer<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(AppColor.textSecondary)
+            fieldLabel(label)
             content()
                 .padding(Spacing.sm)
                 .background(RoundedRectangle(cornerRadius: 12).fill(AppColor.snow))
         }
     }
  
-    private var bottomBar: some View {
+    private var actionButtons: some View {
         VStack(spacing: Spacing.sm) {
             if isDirty {
                 Button("Save changes") { save() }
                     .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
+ 
+                Button("Cancel") { cancelEdits() }
+                    .buttonStyle(OutlinedButtonStyle())
             }
+ 
             Button(role: .destructive) {
                 showDeleteConfirmation = true
             } label: {
@@ -211,8 +262,7 @@ struct MemoryDetailView: View {
             }
             .buttonStyle(OutlinedButtonStyle(border: .red))
         }
-        .padding(Spacing.lg)
-        .background(AppColor.snow.opacity(0.98))
+        .padding(.top, Spacing.sm)
     }
  
     private var savedBanner: some View {
@@ -228,19 +278,68 @@ struct MemoryDetailView: View {
  
     // MARK: - Actions
  
+    private func captureOriginalIfNeeded() {
+        guard !hasCapturedOriginal else { return }
+        originalTitle = memory.title
+        originalTranscript = memory.transcript
+        originalDate = memory.date
+        originalPhotoFileName = memory.photoFileName
+        originalAudioFileName = memory.audioFileName
+        hasCapturedOriginal = true
+    }
+ 
     private func markDirty() {
         isDirty = true
     }
  
     private func save() {
+        // Now that the new photo/audio are confirmed, it's safe to clean up
+        // whatever they replaced.
+        if memory.photoFileName != originalPhotoFileName, let originalPhotoFileName {
+            FileStorageService.deletePhoto(fileName: originalPhotoFileName)
+        }
+        if memory.audioFileName != originalAudioFileName {
+            FileStorageService.deleteAudio(fileName: originalAudioFileName)
+        }
+ 
         try? context.save()
         isDirty = false
+        updateOriginalBaseline()
  
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         withAnimation { showSavedConfirmation = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             withAnimation { showSavedConfirmation = false }
         }
+    }
+ 
+    private func cancelEdits() {
+        // Discard whatever replaced the original photo/audio — it was never
+        // confirmed with Save, so it shouldn't be left on disk.
+        if memory.photoFileName != originalPhotoFileName, let newPhoto = memory.photoFileName {
+            FileStorageService.deletePhoto(fileName: newPhoto)
+        }
+        if memory.audioFileName != originalAudioFileName {
+            FileStorageService.deleteAudio(fileName: memory.audioFileName)
+        }
+ 
+        memory.title = originalTitle
+        memory.transcript = originalTranscript
+        memory.date = originalDate
+        memory.photoFileName = originalPhotoFileName
+        memory.audioFileName = originalAudioFileName
+        isDirty = false
+    }
+ 
+    /// After a successful save, the just-saved values become the new
+    /// "original" baseline, so a later edit-then-Cancel in the same session
+    /// reverts to this point rather than the very first values loaded.
+    private func updateOriginalBaseline() {
+        originalTitle = memory.title
+        originalTranscript = memory.transcript
+        originalDate = memory.date
+        originalPhotoFileName = memory.photoFileName
+        originalAudioFileName = memory.audioFileName
     }
  
     private func toggleFavourite() {
@@ -273,10 +372,22 @@ struct MemoryDetailView: View {
     }
  
     private func removePhoto() {
-        if let photoFileName = memory.photoFileName {
-            FileStorageService.deletePhoto(fileName: photoFileName)
-        }
         memory.photoFileName = nil
+        markDirty()
+    }
+ 
+    /// Called when re-recording finishes. Moves the new audio into
+    /// FileStorageService's shared container (same as SavedMemoryBridge),
+    /// and updates the transcript to match — the old transcript won't
+    /// describe the new recording. Both are revertible via Cancel until
+    /// Save is pressed.
+    private func replaceAudio(with saved: SavedMemory) {
+        guard let audioData = try? Data(contentsOf: MemoryStore.shared.audioURL(named: saved.audioFileName)),
+              let newAudioFileName = try? FileStorageService.saveAudio(data: audioData, fileName: saved.audioFileName)
+        else { return }
+ 
+        memory.audioFileName = newAudioFileName
+        memory.transcript = saved.transcript
         markDirty()
     }
 }
@@ -358,7 +469,9 @@ final class MemoryAudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate
  
     func stop() {
         player?.stop()
+        player = nil
         isPlaying = false
+        progress = 0
         timer?.invalidate()
     }
  
@@ -380,4 +493,3 @@ final class MemoryAudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate
         }
     }
 }
- 
