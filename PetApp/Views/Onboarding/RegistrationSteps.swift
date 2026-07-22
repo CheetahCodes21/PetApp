@@ -422,7 +422,7 @@ struct CompanionStep: View {
                 LabeledField(label: "Companion name", text: $profile.name)
  
                 // Care frequency
-                sectionLabel("Feed every \(profile.careFrequencyDays) day\(profile.careFrequencyDays == 1 ? "" : "s")")
+                sectionLabel("\(profile.kind == .pet ? "Feed" : "Water") every \(profile.careFrequencyDays) day\(profile.careFrequencyDays == 1 ? "" : "s")")
                 Slider(
                     value: Binding(
                         get: { Double(profile.careFrequencyDays) },

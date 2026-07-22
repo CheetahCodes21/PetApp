@@ -45,12 +45,9 @@ struct CompanionProfile: Codable, Equatable {
     var preview: some View {
         switch kind {
         case .pet:
-            Image(systemName: "pawprint.fill")
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(color)
+            RiveCatView(hearts: 3, isSick: false, color: color)
         case .plant:
-            LottieView(name: "FlowerDefaultIdle")
+            RivePlantView(isSick: false, color: color)
         }
     }
 }

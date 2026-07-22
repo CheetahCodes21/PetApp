@@ -22,11 +22,18 @@ enum WidgetSync {
         let live = memories.filter { !$0.isDeleted }
         let thisMonth = live.filter { calendar.isDate($0.date, equalTo: now, toGranularity: .month) }.count
 
-        let hungerLevel: Int
-        switch companion?.currentHungerState {
-        case "veryHungry": hungerLevel = 1
-        case "hungry":     hungerLevel = 3
-        default:           hungerLevel = 5
+        // Hunger derived from the care window (1...3 hearts → widget's 0...5).
+        let hearts = companion?.hungerHearts ?? 3
+        let hungerLevel = [1: 1, 2: 3, 3: 5][hearts] ?? 5
+
+        // Streak = consecutive days (ending today) with at least one memory.
+        let days = Set(live.map { calendar.startOfDay(for: $0.date) })
+        var streak = 0
+        var cursor = calendar.startOfDay(for: now)
+        while days.contains(cursor) {
+            streak += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = previous
         }
 
         // Pet artwork asset (plants fall back to the default pet image in the
@@ -37,9 +44,9 @@ enum WidgetSync {
             companionAssetName: asset,
             userFirstName: name.trimmingCharacters(in: .whitespaces).isEmpty ? "friend" : name,
             todaysQuestion: DailyPrompts.all[DailyPrompts.todayIndex],
-            isHungry: (companion?.currentHungerState ?? "good") != "good",
+            isHungry: hearts < 3,
             hungerLevel: hungerLevel,
-            dayStreak: companion?.streakCount ?? 0,
+            dayStreak: streak,
             memoriesSavedTotal: live.count,
             memoriesThisMonth: thisMonth,
             memoriesGoalThisMonth: 20

@@ -21,6 +21,9 @@ struct HomeView: View {
     @State private var promptIndex = DailyPrompts.todayIndex
     @State private var showRecording = false
     @State private var showEditCompanion = false
+    /// Bumped to play the Rive cat's Feed / Talk one-shot animations.
+    @State private var feedToken = 0
+    @State private var talkToken = 0
  
     private let amber = Color(hex: "#F7C873")
     private let amberSoft = Color(hex: "#FBE6BE")
@@ -46,9 +49,9 @@ struct HomeView: View {
                 .padding(.bottom, Spacing.xl)
             }
         }
-        .sheet(isPresented: $showEditCompanion) {
+        .fullScreenCover(isPresented: $showEditCompanion) {
             if let companion {
-                EditCompanionSheet(companion: companion)
+                EditPetView(companion: companion)
             }
         }
         .memoryRecorder(isPresented: $showRecording, question: DailyPrompts.all[promptIndex]) { saved in
@@ -109,7 +112,10 @@ struct HomeView: View {
         HStack(spacing: Spacing.md) {
             statCard(background: AppColor.ninja.opacity(0.14)) {
                 VStack(alignment: .leading, spacing: Spacing.sm) {
-                    icon("face.smiling", tint: AppColor.ninja)
+                    Text(moodEmoji)
+                        .font(.title2)
+                        .frame(width: 36, height: 36)
+                        .background(Color.white.opacity(0.7), in: Circle())
                     Text("Food bar")
                         .font(.headline)
                         .foregroundStyle(AppColor.textPrimary)
@@ -139,16 +145,35 @@ struct HomeView: View {
         }
     }
  
-    private var filledHearts: Int {
-        switch companion?.currentHungerState {
-        case "hungry":     return 2
-        case "veryHungry": return 1
-        case "good":       return 3
-        default:           return 3
+    /// Food-bar hearts, derived from how long since the companion was cared for.
+    private var filledHearts: Int { companion?.hungerHearts ?? 3 }
+
+    /// Face reflecting the food bar: 3 hearts happy, 2 neutral, 1 sad.
+    private var moodEmoji: String {
+        switch filledHearts {
+        case 3:  return "😊"
+        case 2:  return "😐"
+        default: return "😢"
         }
     }
  
-    private var streakDays: Int { companion?.streakCount ?? 0 }
+    private var careVerb: String { companion?.careVerb ?? "Feed" }
+    private var careIcon: String { companion?.kind == .plant ? "drop.fill" : "fork.knife" }
+
+    /// Streak = consecutive days (ending today) that have at least one memory.
+    private var streakDays: Int {
+        let calendar = Calendar.current
+        let days = Set(allMemories.filter { !$0.isDeleted }.map { calendar.startOfDay(for: $0.date) })
+        guard !days.isEmpty else { return 0 }
+        var streak = 0
+        var day = calendar.startOfDay(for: Date())
+        while days.contains(day) {
+            streak += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
+            day = previous
+        }
+        return streak
+    }
  
     private func statCard<Content: View>(background: Color,
                                          @ViewBuilder _ content: () -> Content) -> some View {
@@ -179,7 +204,7 @@ struct HomeView: View {
  
             companionArt
                 .frame(maxWidth: .infinity)
-                .frame(height: 220)
+                .frame(height: 300)
  
             if companion != nil {
                 Button {
@@ -196,7 +221,7 @@ struct HomeView: View {
                 .accessibilityLabel("Edit companion")
             }
         }
-        .frame(height: 240)
+        .frame(height: 320)
     }
  
     @ViewBuilder
@@ -204,13 +229,40 @@ struct HomeView: View {
         if let companion {
             switch companion.kind {
             case .pet:
-                (PetSpecies(rawValue: companion.petSpeciesRaw) ?? .default).image
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 160, height: 160)
+                let species = PetSpecies(rawValue: companion.petSpeciesRaw) ?? .default
+                if species.isAnimated {
+                    RiveCatView(hearts: companion.hungerHearts,
+                                isSick: companion.isSick,
+                                color: companionColor,
+                                feedToken: feedToken,
+                                talkToken: talkToken)
+                        .frame(width: 300, height: 300)
+                        .clipped()
+                        .contentShape(Rectangle())
+                        .onTapGesture { talkToken += 1 }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityLabel("Tap \(companion.name) to say hi")
+                } else {
+                    species.image.resizable().scaledToFit().frame(width: 260, height: 260)
+                }
             case .plant:
-                LottieView(name: (PlantSpecies(rawValue: companion.plantSpeciesRaw) ?? .default).lottieName)
-                    .frame(width: 180, height: 180)
+                let plant = PlantSpecies(rawValue: companion.plantSpeciesRaw) ?? .default
+                if plant.isAnimated {
+                    RivePlantView(hearts: companion.hungerHearts,
+                                  isSick: companion.isSick,
+                                  color: companionColor,
+                                  feedToken: feedToken,
+                                  talkToken: talkToken)
+                        .frame(width: 300, height: 300)
+                        .clipped()
+                        .contentShape(Rectangle())
+                        .onTapGesture { talkToken += 1 }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityLabel("Tap \(companion.name) to say hi")
+                } else {
+                    LottieView(name: plant.lottieName)
+                        .frame(width: 220, height: 220)
+                }
             }
         } else {
             Text("🐣").font(.system(size: 120))
@@ -233,14 +285,14 @@ struct HomeView: View {
                 Button {
                     withAnimation { feed() }
                 } label: {
-                    Image(systemName: "fork.knife")
+                    Image(systemName: careIcon)
                         .font(.title2)
                         .foregroundStyle(.white)
                         .frame(width: 60, height: 60)
                         .background(AppColor.ninja, in: Circle())
                 }
-                .accessibilityLabel("Feed companion")
-                Text("feed")
+                .accessibilityLabel(careVerb)
+                Text(LocalizedStringKey(careVerb))
                     .font(.caption)
                     .foregroundStyle(AppColor.textSecondary)
             }
@@ -275,6 +327,7 @@ struct HomeView: View {
         companion.lastFedAt = Date()
         companion.currentHungerState = "good"
         try? modelContext.save()
+        feedToken += 1   // play the cat's Feed animation
         if companion.vibrateWhenFed {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         }
@@ -309,212 +362,6 @@ struct HomeView: View {
     }
 }
  
-// MARK: - Edit companion sheet
- 
-private struct EditCompanionSheet: View {
-    let companion: Companion
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
- 
-    @State private var name = ""
-    @State private var kind: CompanionKind = .pet
-    @State private var petSpecies: PetSpecies = .default
-    @State private var plantSpecies: PlantSpecies = .default
-    @State private var colorVariant = CompanionColorOption.default.rawValue
- 
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                AppColor.screenBackground.ignoresSafeArea()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Spacing.lg) {
-                        companionPreview
- 
-                        LabeledField(label: "Companion name", text: $name)
- 
-                        VStack(alignment: .leading, spacing: Spacing.xs) {
-                            Text("Type")
-                                .font(.headline)
-                                .foregroundStyle(AppColor.textPrimary)
-                            Picker("Type", selection: $kind) {
-                                ForEach(CompanionKind.allCases) { option in
-                                    Text(option.title).tag(option)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                        }
- 
-                        VStack(alignment: .leading, spacing: Spacing.xs) {
-                            Text(kind == .pet ? "Choose your pet" : "Choose your plant")
-                                .font(.headline)
-                                .foregroundStyle(AppColor.textPrimary)
-                            speciesPicker
-                        }
- 
-                        VStack(alignment: .leading, spacing: Spacing.xs) {
-                            Text("Colour")
-                                .font(.headline)
-                                .foregroundStyle(AppColor.textPrimary)
-                            HStack(spacing: Spacing.md) {
-                                ForEach(CompanionColorOption.allCases) { option in
-                                    Button {
-                                        colorVariant = option.rawValue
-                                    } label: {
-                                        Circle()
-                                            .fill(option.color)
-                                            .frame(width: 40, height: 40)
-                                            .overlay(Circle().stroke(AppColor.textPrimary,
-                                                                     lineWidth: colorVariant == option.rawValue ? 3 : 0).padding(2))
-                                    }
-                                    .accessibilityLabel(option.rawValue)
-                                }
-                            }
-                        }
- 
-                        // Age — read-only (how old the companion is).
-                        HStack {
-                            Text("Age")
-                                .font(.headline)
-                                .foregroundStyle(AppColor.textPrimary)
-                            Spacer()
-                            Text(ageText)
-                                .font(.body)
-                                .foregroundStyle(AppColor.textSecondary)
-                        }
-                        .padding(Spacing.md)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(AppColor.ninja.opacity(0.1),
-                                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Age, \(ageText)")
-                    }
-                    .padding(Spacing.lg)
-                }
-            }
-            .navigationTitle("Edit companion")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                }
-            }
-            .onAppear {
-                name = companion.name
-                kind = companion.kind
-                petSpecies = PetSpecies(rawValue: companion.petSpeciesRaw) ?? .default
-                plantSpecies = PlantSpecies(rawValue: companion.plantSpeciesRaw) ?? .default
-                colorVariant = companion.colorVariant
-            }
-        }
-    }
- 
-    private var previewColor: Color {
-        (CompanionColorOption(rawValue: colorVariant) ?? .default).color
-    }
- 
-    /// Live preview that updates as the user changes type / colour.
-    private var companionPreview: some View {
-        ZStack {
-            Circle()
-                .fill(previewColor.opacity(0.2))
-                .frame(width: 150, height: 150)
-            Circle()
-                .stroke(previewColor, lineWidth: 4)
-                .frame(width: 150, height: 150)
- 
-            Group {
-                switch kind {
-                case .pet:
-                    petSpecies.image
-                        .resizable()
-                        .scaledToFit()
-                case .plant:
-                    LottieView(name: plantSpecies.lottieName)
-                }
-            }
-            .frame(width: 110, height: 110)
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityHidden(true)
-    }
- 
-    @ViewBuilder
-    private var speciesPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Spacing.md) {
-                if kind == .pet {
-                    ForEach(PetSpecies.allCases) { species in
-                        speciesCell(name: species.displayName,
-                                    isSelected: petSpecies == species) {
-                            species.image.resizable().scaledToFit()
-                        } action: {
-                            petSpecies = species
-                        }
-                    }
-                } else {
-                    ForEach(PlantSpecies.allCases) { species in
-                        speciesCell(name: species.displayName,
-                                    isSelected: plantSpecies == species) {
-                            LottieView(name: species.lottieName)
-                        } action: {
-                            plantSpecies = species
-                        }
-                    }
-                }
-            }
-            .padding(.vertical, 4)
-        }
-    }
- 
-    private func speciesCell<Art: View>(name: String,
-                                        isSelected: Bool,
-                                        @ViewBuilder art: () -> Art,
-                                        action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                art().frame(width: 60, height: 60)
-                Text(name)
-                    .font(.caption)
-                    .foregroundStyle(AppColor.textPrimary)
-            }
-            .padding(Spacing.sm)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(isSelected ? previewColor.opacity(0.18) : .clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(isSelected ? previewColor : .clear, lineWidth: 2)
-            )
-        }
-        .accessibilityLabel(name)
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-    }
- 
-    private var ageText: String {
-        let days = Calendar.current.dateComponents([.day],
-                                                   from: companion.createdAt,
-                                                   to: Date()).day ?? 0
-        switch days {
-        case ..<1:  return "Born today"
-        case 1:     return "1 day old"
-        default:    return "\(days) days old"
-        }
-    }
- 
-    private func save() {
-        companion.name = name
-        companion.kind = kind
-        companion.petSpeciesRaw = petSpecies.rawValue
-        companion.plantSpeciesRaw = plantSpecies.rawValue
-        companion.colorVariant = colorVariant
-        try? modelContext.save()
-        dismiss()
-    }
-}
  
 #Preview {
     HomeView()

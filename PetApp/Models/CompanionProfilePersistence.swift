@@ -22,6 +22,7 @@ extension CompanionProfile {
             colorVariant: colorOption.assetSlug,
             name: name,
             careFrequencyLabel: Self.label(forDays: careFrequencyDays),
+            careFrequencyDays: careFrequencyDays,
             becomesUnwellIfNotFed: sickIfNotFed,
             vibrateWhenFed: vibrateWhenFed,
             owner: owner
