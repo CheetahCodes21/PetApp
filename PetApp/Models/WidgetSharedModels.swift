@@ -16,7 +16,7 @@
 import Foundation
 
 enum AppGroup {
-    static let id = "group.com.AppleFoundationProgram.PetApp"
+    static let id = "group.com.yourteam.petapp"
 }
 
 /// Snapshot of everything the widgets/Live Activity need to render.
@@ -30,9 +30,13 @@ struct PetWidgetData: Codable {
     var memoriesSavedTotal: Int
     var memoriesThisMonth: Int
     var memoriesGoalThisMonth: Int
+    /// True when the growth object is a plant rather than a pet. Plants have
+    /// no static widget image (only a Lottie animation), so widgets fall
+    /// back to a system leaf icon when this is true.
+    var isPlant: Bool = false
 
     static let placeholder = PetWidgetData(
-        companionAssetName: "dog1",
+        companionAssetName: "chick",
         userFirstName: "Margaret",
         todaysQuestion: "What did you do today?",
         isHungry: true,
@@ -40,7 +44,8 @@ struct PetWidgetData: Codable {
         dayStreak: 12,
         memoriesSavedTotal: 47,
         memoriesThisMonth: 13,
-        memoriesGoalThisMonth: 20
+        memoriesGoalThisMonth: 20,
+        isPlant: false
     )
 }
 

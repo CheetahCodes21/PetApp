@@ -29,25 +29,44 @@ enum WidgetSync {
         default:           hungerLevel = 5
         }
 
-        // Pet artwork asset (plants fall back to the default pet image in the
-        // widget, since plant companions are Lottie-only — no static image).
+        // NOTE: assumes CompanionKind has a `.plant` case per the comment in
+        // Companion.swift ("one pet design and one plant design"). Update
+        // this comparison if the actual case name differs.
+        let isPlant = companion?.kind == .plant
+
+        // Pet artwork asset. Plants have no static image (Lottie-only), so
+        // widgets/Live Activity fall back to a system leaf icon when isPlant
+        // is true — companionAssetName is unused in that case.
         let asset = (PetSpecies(rawValue: companion?.petSpeciesRaw ?? "") ?? .default).assetName
+        let isHungry = (companion?.currentHungerState ?? "good") != "good"
 
         let data = PetWidgetData(
             companionAssetName: asset,
             userFirstName: name.trimmingCharacters(in: .whitespaces).isEmpty ? "friend" : name,
             todaysQuestion: DailyPrompts.all[DailyPrompts.todayIndex],
-            isHungry: (companion?.currentHungerState ?? "good") != "good",
+            isHungry: isHungry,
             hungerLevel: hungerLevel,
             dayStreak: companion?.streakCount ?? 0,
             memoriesSavedTotal: live.count,
             memoriesThisMonth: thisMonth,
-            memoriesGoalThisMonth: 20
+            memoriesGoalThisMonth: 20,
+            isPlant: isPlant
         )
 
-        writeCompanionImage(assetName: asset)
+        if !isPlant {
+            writeCompanionImage(assetName: asset)
+        }
         PetWidgetStore.save(data)
         WidgetCenter.shared.reloadAllTimelines()
+
+        Task {
+            await LiveActivityManager.sync(
+                companionAssetName: asset,
+                isHungry: isHungry,
+                hungerLevel: hungerLevel,
+                isPlant: isPlant
+            )
+        }
     }
 
     /// Copies the companion's artwork into the App Group container so the
