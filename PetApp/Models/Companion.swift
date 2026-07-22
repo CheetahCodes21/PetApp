@@ -19,6 +19,9 @@ final class Companion {
  
     /// Plain-language interval, e.g. "Once a day", "Every two days" — never a raw number.
     var careFrequencyLabel: String
+    /// Numeric care window in days — how long before the companion gets hungry
+    /// (and, if `becomesUnwellIfNotFed`, turns sick). Drives hunger decay.
+    var careFrequencyDays: Int = 7
     var becomesUnwellIfNotFed: Bool
     var vibrateWhenFed: Bool
  
@@ -41,6 +44,7 @@ final class Companion {
         petSpeciesRaw: String = PetSpecies.default.rawValue,
         plantSpeciesRaw: String = PlantSpecies.default.rawValue,
         careFrequencyLabel: String,
+        careFrequencyDays: Int = 7,
         becomesUnwellIfNotFed: Bool,
         vibrateWhenFed: Bool,
         currentHungerState: String = "good",
@@ -57,6 +61,7 @@ final class Companion {
         self.petSpeciesRaw = petSpeciesRaw
         self.plantSpeciesRaw = plantSpeciesRaw
         self.careFrequencyLabel = careFrequencyLabel
+        self.careFrequencyDays = careFrequencyDays
         self.becomesUnwellIfNotFed = becomesUnwellIfNotFed
         self.vibrateWhenFed = vibrateWhenFed
         self.currentHungerState = currentHungerState
@@ -66,4 +71,33 @@ final class Companion {
         self.createdAt = createdAt
         self.owner = owner
     }
+}
+
+// MARK: - Hunger decay (derived from the care window)
+
+extension Companion {
+    /// 0 = just fed/watered, 1 = a full care window has elapsed.
+    var feedingElapsedFraction: Double {
+        let since = lastFedAt ?? createdAt
+        let window = Double(max(1, careFrequencyDays)) * 86_400
+        return max(0, Date().timeIntervalSince(since) / window)
+    }
+
+    /// Food-bar hearts (1...3): 3 = happy, 2 = hungry, 1 = very hungry.
+    var hungerHearts: Int {
+        switch feedingElapsedFraction {
+        case ..<(1.0 / 3): return 3
+        case ..<(2.0 / 3): return 2
+        default:           return 1
+        }
+    }
+
+    /// True once the care window has fully elapsed and the companion is set to
+    /// become unwell when not cared for in time.
+    var isSick: Bool {
+        becomesUnwellIfNotFed && feedingElapsedFraction >= 1.0
+    }
+
+    /// The care action verb for this companion.
+    var careVerb: String { kind == .plant ? "Water" : "Feed" }
 }

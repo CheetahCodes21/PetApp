@@ -19,19 +19,18 @@ enum PetSpecies: String, CaseIterable, Identifiable, Codable {
 
     var displayName: String {
         switch self {
-        case .kangaroo: return "Kangaroo"
         case .cat:      return "Cat"
-        case .cow:      return "Cow"
         case .dog:      return "Dog"
         case .fox:      return "Fox"
         }
     }
 
-    /// Exact asset-catalog name for this species' artwork.
+    /// Exact asset-catalog name for this species' artwork. Unused for `.cat`,
+    /// which is rendered with the animated Rive scene (see `isAnimated`).
     var assetName: String {
         switch self {
-        case .kangaroo: return "Aussie Kangaroo"
-        case .cat:      return "cat1"
+        case .cat:      return "Cat"
+        case .dog:      return "Dog"
         case .cow:      return "cow1"
         case .dog:      return "dog1"
         case .fox:      return "Fox"
@@ -41,26 +40,36 @@ enum PetSpecies: String, CaseIterable, Identifiable, Codable {
 
     var image: Image { Image(assetName) }
 
-    static let `default`: PetSpecies = .dog
+    /// Whether this species is rendered with the animated Rive scene rather
+    /// than a static image.
+    var isAnimated: Bool { self == .cat }
+
+    static let `default`: PetSpecies = .cat
 }
 
 enum PlantSpecies: String, CaseIterable, Identifiable, Codable {
-    case flower
+    // sprout = animated Rive plant (plant.riv); flower = Lottie idle animation.
+    case sprout, flower
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
+        case .sprout: return "Sprout"
         case .flower: return "Flower"
         }
     }
 
-    /// Bundled Lottie animation for this plant.
+    /// Animated plants render with Rive (RivePlantView); others use Lottie.
+    var isAnimated: Bool { self == .sprout }
+
+    /// Bundled Lottie animation for this plant (unused for animated species).
     var lottieName: String {
         switch self {
+        case .sprout: return "FlowerDefaultIdle"
         case .flower: return "FlowerDefaultIdle"
         }
     }
 
-    static let `default`: PlantSpecies = .flower
+    static let `default`: PlantSpecies = .sprout
 }
