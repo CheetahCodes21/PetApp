@@ -1,5 +1,3 @@
-
-
 //
 //  ShareMemoryView.swift
 //  PetApp
@@ -59,9 +57,11 @@ struct ShareMemoryView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(AppColor.textSecondary)
+                            .frame(width: 30, height: 30)
+                            .background(Circle().fill(AppColor.snow))
                     }
                     .accessibilityLabel("Close")
                 }
@@ -153,3 +153,4 @@ private struct ActivityShareSheet: UIViewControllerRepresentable {
  
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
+ 

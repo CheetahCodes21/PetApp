@@ -24,6 +24,10 @@ final class SaveMemoryModel: ObservableObject {
     @Published var date: Date
     @Published var transcript = ""
     @Published private(set) var transcriptState: TranscriptState = .none
+    /// True when transcription can't run on this device at all (e.g. the
+    /// Simulator, or no on-device dictation model). Distinct from a transient
+    /// failure so we can show a calm note instead of an error + retry.
+    @Published private(set) var transcriptUnavailable = false
     @Published private(set) var isPreparing = true
     @Published var errorMessage: String?
 
@@ -36,6 +40,7 @@ final class SaveMemoryModel: ObservableObject {
     private(set) var assembledURL: URL?
     private var player: AVPlayer?
     private var timeObserver: Any?
+    private var endObserver: NSObjectProtocol?
 
     init(draft: RecordingDraft) {
         self.draft = draft
@@ -77,9 +82,14 @@ final class SaveMemoryModel: ObservableObject {
     private func runTranscription() async {
         guard let url = assembledURL else { transcriptState = .none; return }
         transcriptState = .pending
+        transcriptUnavailable = false
         do {
             transcript = try await TranscriptionService.transcribe(url: url)
             transcriptState = .ready
+        } catch TranscriptionService.TranscriptionError.unavailable {
+            // Can't transcribe privately on this device — not a retryable error.
+            transcriptUnavailable = true
+            transcriptState = .failed
         } catch {
             transcriptState = .failed
         }
@@ -99,7 +109,21 @@ final class SaveMemoryModel: ObservableObject {
             MainActor.assumeIsolated {
                 guard let self, self.duration > 0 else { return }
                 self.progress = min(1, time.seconds / self.duration)
-                if time.seconds >= self.duration { self.isPlaying = false }
+            }
+        }
+        // Fires exactly when playback reaches the end. The periodic observer
+        // above can't be relied on for this (its last tick lands ~0.2s short),
+        // which left the button stuck on "Pause" and the bar a second shy of the
+        // total. Here we snap to the end and reset the play state.
+        endObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: player.currentItem,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.progress = 1
+                self.isPlaying = false
             }
         }
     }
@@ -182,6 +206,8 @@ final class SaveMemoryModel: ObservableObject {
         player?.pause()
         if let timeObserver { player?.removeTimeObserver(timeObserver) }
         timeObserver = nil
+        if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+        endObserver = nil
         player = nil
         isPlaying = false
     }
@@ -303,8 +329,7 @@ struct SaveMemoryView: View {
                     Button {
                         model.togglePlay()
                     } label: {
-                        Label(model.isPlaying ? "Pause" : "Play",
-                              systemImage: model.isPlaying ? "pause.fill" : "play.fill")
+                        Label(playbackTitle, systemImage: playbackIcon)
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, Spacing.md)
@@ -321,6 +346,21 @@ struct SaveMemoryView: View {
                     .tint(AppColor.ninja)
             }
         }
+    }
+
+    /// Once playback has run to the end, offer "Replay" instead of "Play".
+    private var playbackFinished: Bool { !model.isPlaying && model.progress >= 1 }
+
+    // LocalizedStringKey (not String) so these literals are still picked up by
+    // the string catalog for translation.
+    private var playbackTitle: LocalizedStringKey {
+        if model.isPlaying { return "Pause" }
+        return playbackFinished ? "Replay" : "Play"
+    }
+
+    private var playbackIcon: String {
+        if model.isPlaying { return "pause.fill" }
+        return playbackFinished ? "arrow.counterclockwise" : "play.fill"
     }
 
     private var transcriptSection: some View {
@@ -345,19 +385,28 @@ struct SaveMemoryView: View {
                 }
             }
             if model.transcriptState == .failed {
-                HStack {
-                    Text("We couldn't write this out.")
+                if model.transcriptUnavailable {
+                    // On-device transcription isn't possible here; retrying won't
+                    // help, so guide the user to type it themselves instead.
+                    Text("Writing your words out isn't available on this device. Your recording is saved — you can type here if you'd like.")
+                        .font(.callout)
                         .foregroundStyle(AppColor.textSecondary)
-                    Button("Try again") { model.retryTranscription() }
-                        .foregroundStyle(AppColor.ninja)
+                } else {
+                    HStack {
+                        Text("We couldn't write this out.")
+                            .foregroundStyle(AppColor.textSecondary)
+                        Button("Try again") { model.retryTranscription() }
+                            .foregroundStyle(AppColor.ninja)
+                    }
+                    .font(.callout)
                 }
-                .font(.callout)
             }
         }
     }
 
     private var dateSection: some View {
-        DatePicker("Date", selection: $model.date, displayedComponents: .date)
+        // A memory can't have happened in the future, so cap the picker at today.
+        DatePicker("Date", selection: $model.date, in: ...Date(), displayedComponents: .date)
             .font(.headline)
             .tint(AppColor.ninja)
     }
