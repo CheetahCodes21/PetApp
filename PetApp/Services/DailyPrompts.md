@@ -47,6 +47,14 @@ layer). Either way it resolves to one string handed to the recorder unchanged.
 - Strings are used as **localization keys** (`LocalizedStringKey`). When adding a
   new question, also add its translations in `Localizable.xcstrings`.
 
+## Read-aloud voice clips
+
+Read-aloud prefers a pre-rendered cloud-TTS clip per question (falling back to
+on-device speech). **When you add or reword a question, also update
+`Tools/voice-manifest.json` to match byte-for-byte and re-run
+`Tools/generate-voices.py`** — otherwise that line falls back to the system
+voice. See `Tools/README.md`.
+
 ## What NOT to touch
 
 The rest of the pipeline reads `DailyPrompts` and should not need edits when you

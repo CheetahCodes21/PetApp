@@ -1,0 +1,31 @@
+{
+  "comment": "Exact spoken lines to pre-render with cloud TTS. These MUST match the strings in PetApp/PetApp/Services/DailyPrompts.swift byte-for-byte, because the runtime looks up each clip by SHA-256 of the spoken text. English only on this branch; add translated lines on the localization branch.",
+  "lines": [
+    "Did you go outside today?",
+    "Where did you go, and how was the weather?",
+    "Did you have something good to eat today?",
+    "What was it, and who made it?",
+    "Did you talk with anyone today?",
+    "Who was it, and what did you talk about?",
+    "Did anything make you smile today?",
+    "What was it?",
+    "Did you watch or listen to anything today?",
+    "What was it, and did you enjoy it?",
+    "Did you sleep well last night?",
+    "Did you dream about anything?",
+    "Did you see family or a friend today?",
+    "Who did you see, and what did you do together?",
+    "Did you get any little jobs done today?",
+    "What did you get to?",
+    "What made you smile today?",
+    "What is a favourite memory from your childhood?",
+    "Who is someone you are grateful for?",
+    "What is a song that means a lot to you?",
+    "Where is a place you have always loved?",
+    "What is something kind you did or saw recently?",
+    "What is a meal that reminds you of home?",
+    "What is a small thing that brought you joy today?",
+    "Tell a story about a good friend.",
+    "What are you looking forward to?"
+  ]
+}
