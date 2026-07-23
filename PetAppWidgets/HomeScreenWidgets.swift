@@ -1,4 +1,4 @@
-//
+///
 //  HomeScreenWidgets.swift
 //  PetAppWidgets
 //
@@ -6,13 +6,13 @@
 //  extension doesn't share Theme.swift, so the theme colours are mirrored
 //  locally below (kept in sync by hand).
 //
-
+ 
 import WidgetKit
 import SwiftUI
 import UIKit
-
+ 
 // MARK: - Theme (mirrors the app's "App theme colours")
-
+ 
 private extension Color {
     static let wThistle     = Color(hex: "#C8B8DB")
     static let wSnow        = Color(hex: "#F9F4F5")
@@ -21,20 +21,27 @@ private extension Color {
     static let wHeart       = Color(hex: "#E0555F")
     static let wAmber       = Color(hex: "#E8912E")
 }
-
+ 
 private var lavenderBackground: some View {
     LinearGradient(colors: [Color.wThistle.opacity(0.9), Color.wSnow],
                    startPoint: .topLeading, endPoint: .bottomTrailing)
 }
-
+ 
 /// Loads the companion image the app wrote into the shared App Group container,
-/// if one exists (static animals only — the cat/plants have no static image).
+/// if one exists (the real static artwork — dog/cow/rabbit/goldfish).
 private func companionUIImage() -> UIImage? {
     guard let container = FileManager.default
         .containerURL(forSecurityApplicationGroupIdentifier: AppGroup.id) else { return nil }
     return UIImage(contentsOfFile: container.appendingPathComponent("companion.png").path)
 }
-
+ 
+/// The companion's chosen recolour, matching the app's colour picker
+/// (CompanionColorOption) — defaults to purple, same as in-app.
+private func companionColor(_ data: PetWidgetData) -> Color {
+    guard let hex = data.companionColorHex else { return Color(hex: "#6B4E9E") }
+    return Color(hex: hex)
+}
+ 
 /// A time-of-day greeting.
 private func greeting(_ date: Date) -> String {
     switch Calendar.current.component(.hour, from: date) {
@@ -44,23 +51,36 @@ private func greeting(_ date: Date) -> String {
     default:      return "Hello"
     }
 }
-
+ 
 // MARK: - Companion avatar (photo when available, else the mood face)
-
+ 
 private struct CompanionAvatar: View {
     let data: PetWidgetData
     var size: CGFloat = 64
     /// Tint of the ring/backing (light on plum, deeper on lavender).
     var onDark: Bool = true
-
+ 
     var body: some View {
         ZStack {
             Circle()
                 .fill(onDark ? Color.white.opacity(0.16) : Color.wNinja.opacity(0.14))
             if let ui = companionUIImage(), !data.companionAssetName.isEmpty {
+                // Real static artwork (dog, cow, rabbit, goldfish) — already
+                // rendered in its fixed colour, no tinting needed.
                 Image(uiImage: ui)
                     .resizable().scaledToFit()
                     .padding(size * 0.14)
+            } else if data.companionKind != nil {
+                // Animated companions (the Rive cat, or any plant) have no
+                // exported photo, but do have a still "idle" template image
+                // bundled with the widget — recolour it to match what the
+                // user picked in the app.
+                Image(data.companionKind == "plant" ? "Plant idle" : "Cat Idle")
+                    .resizable()
+                    .renderingMode(.template)
+                    .scaledToFit()
+                    .padding(size * 0.14)
+                    .foregroundStyle(companionColor(data))
             } else {
                 Text(data.moodEmoji)
                     .font(.system(size: size * 0.5))
@@ -71,7 +91,7 @@ private struct CompanionAvatar: View {
                                  lineWidth: 1))
     }
 }
-
+ 
 private struct HeartsRow: View {
     let filled: Int          // 0...3 mood hearts
     var body: some View {
@@ -84,19 +104,19 @@ private struct HeartsRow: View {
         }
     }
 }
-
+ 
 /// A rounded speech-bubble shape with a small tail pointing left, toward
 /// whatever avatar sits beside it (used to make the daily question read as
 /// something the companion is "saying").
 private struct SpeechBubbleShape: Shape {
     var cornerRadius: CGFloat = 14
     var tailSize: CGFloat = 8
-
+ 
     func path(in rect: CGRect) -> Path {
         let bubbleRect = CGRect(x: rect.minX + tailSize, y: rect.minY,
                                  width: rect.width - tailSize, height: rect.height)
         var path = Path(roundedRect: bubbleRect, cornerRadius: cornerRadius)
-
+ 
         let tailY = bubbleRect.minY + min(cornerRadius + tailSize, bubbleRect.height / 2)
         path.move(to: CGPoint(x: bubbleRect.minX, y: tailY - tailSize))
         path.addLine(to: CGPoint(x: bubbleRect.minX - tailSize, y: tailY))
@@ -105,12 +125,12 @@ private struct SpeechBubbleShape: Shape {
         return path
     }
 }
-
+ 
 private struct SpeechBubble: View {
     let text: String
     var fill: Color = .white
     var textColor: Color = .wBlackberry
-
+ 
     var body: some View {
         Text(text)
             .font(.subheadline.weight(.bold))
@@ -124,12 +144,12 @@ private struct SpeechBubble: View {
             .background(SpeechBubbleShape().fill(fill))
     }
 }
-
+ 
 // MARK: - Companion widget (small + medium) — the flagship
-
+ 
 struct CompanionWidget: Widget {
     let kind = "CompanionWidget"
-
+ 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: PetTimelineProvider()) { entry in
             CompanionView(entry: entry)
@@ -140,12 +160,12 @@ struct CompanionWidget: Widget {
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
-
+ 
 private struct CompanionView: View {
     @Environment(\.widgetFamily) private var family
     let entry: PetEntry
     private var d: PetWidgetData { entry.data }
-
+ 
     var body: some View {
         if d.isSignedOut {
             emptyState
@@ -155,7 +175,7 @@ private struct CompanionView: View {
             medium
         }
     }
-
+ 
     private var small: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -174,26 +194,26 @@ private struct CompanionView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
-
+ 
     private var medium: some View {
         HStack(spacing: 14) {
             CompanionAvatar(data: d, size: 78, onDark: false)
-
+ 
             VStack(alignment: .leading, spacing: 5) {
                 Text("\(greeting(entry.date)), \(d.userFirstName)")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.wNinja)
                     .lineLimit(1)
-
+ 
                 Text(d.companionName ?? "Your companion")
                     .font(.title3.weight(.bold))
                     .foregroundStyle(Color.wBlackberry)
                     .lineLimit(1)
-
+ 
                 HeartsRow(filled: d.moodHearts ?? 3)
-
+ 
                 Spacer(minLength: 2)
-
+ 
                 HStack(spacing: 12) {
                     stat(icon: "flame.fill", value: "\(d.dayStreak)", label: "streak", tint: .wAmber)
                     stat(icon: "heart.fill", value: "\(d.memoriesSavedTotal)", label: "memories", tint: .wHeart)
@@ -203,7 +223,7 @@ private struct CompanionView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
-
+ 
     private func stat(icon: String, value: String, label: String, tint: Color) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon).font(.caption2).foregroundStyle(tint)
@@ -211,7 +231,7 @@ private struct CompanionView: View {
             Text(label).font(.caption2).foregroundStyle(Color.wNinja)
         }
     }
-
+ 
     private var emptyState: some View {
         VStack(spacing: 8) {
             Text("🐾").font(.system(size: family == .systemSmall ? 34 : 44))
@@ -223,12 +243,12 @@ private struct CompanionView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
-
+ 
 // MARK: - Medium widget: "Today's question is ready"
-
+ 
 struct QuestionReadyWidget: Widget {
     let kind = "QuestionReadyWidget"
-
+ 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: PetTimelineProvider()) { entry in
             QuestionReadyView(entry: entry)
@@ -239,33 +259,28 @@ struct QuestionReadyWidget: Widget {
         .supportedFamilies([.systemMedium])
     }
 }
-
+ 
 private struct QuestionReadyView: View {
     let entry: PetEntry
     private var d: PetWidgetData { entry.data }
-
+ 
     var body: some View {
         if d.isSignedOut {
             emptyState
         } else {
             HStack(spacing: 14) {
                 CompanionAvatar(data: d, size: 78, onDark: false)
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Today's question is ready")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.wNinja)
-                        .lineLimit(1)
-
-                    SpeechBubble(text: d.todaysQuestion)
-
-                    HeartsRow(filled: d.moodHearts ?? 3)
-
+ 
+                VStack(alignment: .leading, spacing: 8) {
+                    SpeechBubble(text: d.todaysQuestion, fill: .wSnow)
+ 
                     Spacer(minLength: 2)
-
+ 
                     HStack(spacing: 12) {
-                        stat(icon: "flame.fill", value: "\(d.dayStreak)", label: "streak", tint: .wAmber)
-                        stat(icon: "heart.fill", value: "\(d.memoriesSavedTotal)", label: "memories", tint: .wHeart)
+                        HeartsRow(filled: d.moodHearts ?? 3)
+                        if d.dayStreak > 0 {
+                            stat(icon: "flame.fill", value: "\(d.dayStreak)", label: "day streak", tint: .wAmber)
+                        }
                     }
                 }
                 Spacer(minLength: 0)
@@ -273,7 +288,7 @@ private struct QuestionReadyView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
     }
-
+ 
     private func stat(icon: String, value: String, label: String, tint: Color) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon).font(.caption2).foregroundStyle(tint)
@@ -281,7 +296,7 @@ private struct QuestionReadyView: View {
             Text(label).font(.caption2).foregroundStyle(Color.wNinja)
         }
     }
-
+ 
     private var emptyState: some View {
         VStack(spacing: 8) {
             Text("🐾").font(.system(size: 44))
@@ -293,12 +308,12 @@ private struct QuestionReadyView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
-
+ 
 // MARK: - Small widget: day streak
-
+ 
 struct StreakWidget: Widget {
     let kind = "StreakWidget"
-
+ 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: PetTimelineProvider()) { entry in
             StatSmallView(systemIcon: "flame.fill",
@@ -312,12 +327,12 @@ struct StreakWidget: Widget {
         .supportedFamilies([.systemSmall])
     }
 }
-
+ 
 // MARK: - Small widget: memories saved
-
+ 
 struct MemoriesSavedWidget: Widget {
     let kind = "MemoriesSavedWidget"
-
+ 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: PetTimelineProvider()) { entry in
             StatSmallView(systemIcon: "heart.fill",
@@ -331,13 +346,13 @@ struct MemoriesSavedWidget: Widget {
         .supportedFamilies([.systemSmall])
     }
 }
-
+ 
 private struct StatSmallView: View {
     let systemIcon: String
     let value: String
     let label: String
     let tint: Color
-
+ 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Image(systemName: systemIcon)
@@ -345,9 +360,9 @@ private struct StatSmallView: View {
                 .foregroundStyle(tint)
                 .frame(width: 40, height: 40)
                 .background(Circle().fill(.white.opacity(0.7)))
-
+ 
             Spacer(minLength: 0)
-
+ 
             Text(value)
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundStyle(Color.wBlackberry)
@@ -358,9 +373,9 @@ private struct StatSmallView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }
-
+ 
 // MARK: - Local hex helper
-
+ 
 private extension Color {
     init(hex: String) {
         let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
@@ -372,25 +387,25 @@ private extension Color {
         self.init(.sRGB, red: r, green: g, blue: b, opacity: 1.0)
     }
 }
-
+ 
 #Preview("Companion", as: .systemMedium) {
     CompanionWidget()
 } timeline: {
     PetEntry(date: .now, data: .placeholder)
 }
-
+ 
 #Preview("Companion small", as: .systemSmall) {
     CompanionWidget()
 } timeline: {
     PetEntry(date: .now, data: .placeholder)
 }
-
+ 
 #Preview("Question Ready", as: .systemMedium) {
     QuestionReadyWidget()
 } timeline: {
     PetEntry(date: .now, data: .placeholder)
 }
-
+ 
 #Preview("Streak", as: .systemSmall) {
     StreakWidget()
 } timeline: {

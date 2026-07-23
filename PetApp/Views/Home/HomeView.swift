@@ -151,7 +151,7 @@ struct HomeView: View {
             statCard(background: AppColor.ninja.opacity(0.14),
                      accent: AppColor.textPrimary,
                      badgeBackground: .white.opacity(0.85),
-                     title: "Happiness Level",
+                     title: "Happiness",
                      badge: {
                          Text(moodEmoji).font(.title3)
                      },

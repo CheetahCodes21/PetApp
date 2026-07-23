@@ -6,23 +6,23 @@
 //  App Group snapshot the widgets + Live Activity read, then asks WidgetKit
 //  to reload. Call it whenever that state changes (launch, feed, new memory).
 //
-
+ 
 import Foundation
 import WidgetKit
 import UIKit
-
+ 
 @MainActor
 enum WidgetSync {
     /// Filename of the companion image shared via the App Group container.
     static let companionImageName = "companion.png"
-
+ 
     /// Clears the shared widget snapshot (e.g. on sign-out) and refreshes the
     /// widgets so they fall back to the placeholder instead of the last user's pet.
     static func clear() {
         PetWidgetStore.clear()
         WidgetCenter.shared.reloadAllTimelines()
     }
-
+ 
     static func update(companion: Companion?, name: String, memories: [Memory]) {
         // No companion (signed out / brand-new account): show the gentle empty
         // prompt rather than stale or sample data.
@@ -31,16 +31,16 @@ enum WidgetSync {
             WidgetCenter.shared.reloadAllTimelines()
             return
         }
-
+ 
         let calendar = Calendar.current
         let now = Date()
         let live = memories.filter { !$0.isDeleted }
         let thisMonth = live.filter { calendar.isDate($0.date, equalTo: now, toGranularity: .month) }.count
-
+ 
         // Hunger derived from the care window (1...3 hearts → widget's 0...5).
         let hearts = companion.hungerHearts
         let hungerLevel = [1: 1, 2: 3, 3: 5][hearts] ?? 5
-
+ 
         // Streak = consecutive days (ending today) with at least one memory.
         let days = Set(live.map { calendar.startOfDay(for: $0.date) })
         var streak = 0
@@ -50,17 +50,19 @@ enum WidgetSync {
             guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
             cursor = previous
         }
-
+ 
         // Pet artwork for the widget. Animated companions (the Rive cat, Lottie
-        // plants) have no static image, so leave the asset empty — the widget
-        // shows the mood emoji for those instead of a wrong stand-in picture.
-        // Static animals (dog, cow, rabbit, goldfish) show their real artwork.
+        // plants) have no exported still image of the app's actual art, so
+        // leave the asset empty — the widget has its own recoloured "idle"
+        // template art for those (see CompanionAvatar in HomeScreenWidgets.swift)
+        // rather than trying to fake a photo. Static animals (dog, cow,
+        // rabbit, goldfish) show their real artwork.
         let species = PetSpecies(rawValue: companion.petSpeciesRaw) ?? .default
         let hasStaticImage = companion.kind == .pet
             && !species.isAnimated
             && UIImage(named: species.assetName) != nil
         let asset = hasStaticImage ? species.assetName : ""
-
+ 
         let data = PetWidgetData(
             companionAssetName: asset,
             userFirstName: name.trimmingCharacters(in: .whitespaces).isEmpty ? "friend" : name,
@@ -74,9 +76,10 @@ enum WidgetSync {
             companionName: companion.name,
             moodHearts: hearts,
             companionKind: companion.kind == .plant ? "plant" : "pet",
+            companionColorHex: (CompanionColorOption(rawValue: companion.colorVariant) ?? .default).hex,
             hasCompanion: true
         )
-
+ 
         if asset.isEmpty {
             removeCompanionImage()
         } else {
@@ -85,7 +88,7 @@ enum WidgetSync {
         PetWidgetStore.save(data)
         WidgetCenter.shared.reloadAllTimelines()
     }
-
+ 
     /// Copies the companion's artwork into the App Group container so the
     /// widget (which can't read the app's asset catalog) can display it.
     private static func writeCompanionImage(assetName: String) {
@@ -96,7 +99,7 @@ enum WidgetSync {
             try? data.write(to: url)
         }
     }
-
+ 
     /// Removes any previously-written companion image so an animated companion
     /// (cat/plant) doesn't keep showing a stale static picture in the widget.
     private static func removeCompanionImage() {
