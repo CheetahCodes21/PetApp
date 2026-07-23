@@ -63,6 +63,43 @@ enum AppLanguage: String, CaseIterable, Codable, Identifiable {
     }
 
     var locale: Locale { Locale(identifier: rawValue) }
+
+    /// BCP-47 locale used for speech recognition (transcribing recordings).
+    /// Region-qualified so `SFSpeechRecognizer` reliably finds a dictation model.
+    var speechLocaleIdentifier: String {
+        switch self {
+        case .english:  return "en-US"
+        case .spanish:  return "es-ES"
+        case .french:   return "fr-FR"
+        case .hindi:    return "hi-IN"
+        case .mandarin: return "zh-CN"
+        }
+    }
+
+    /// The `.lproj` bundle for this language, so text can be localized to the
+    /// *in-app* selected language regardless of the device's system language.
+    /// Falls back to the main bundle if the language isn't compiled in.
+    var bundle: Bundle {
+        Bundle.main.path(forResource: rawValue, ofType: "lproj")
+            .flatMap(Bundle.init(path:)) ?? .main
+    }
+
+    /// Resolves `englishText` to the wording (and the BCP-47 language it should
+    /// be *voiced* in) for this app language.
+    ///
+    /// If a translation exists in the selected language's catalog, that wording
+    /// is spoken in that language. If none exists, the original English text is
+    /// returned to be voiced in English — so read-aloud never reads English
+    /// words with a foreign accent.
+    func spoken(_ englishText: String) -> (text: String, voiceLanguage: String) {
+        guard self != .english else { return (englishText, "en") }
+        let translated = NSLocalizedString(englishText,
+                                           bundle: bundle,
+                                           value: englishText,
+                                           comment: "")
+        return translated == englishText ? (englishText, "en")
+                                         : (translated, rawValue)
+    }
 }
 
 // MARK: - Settings store

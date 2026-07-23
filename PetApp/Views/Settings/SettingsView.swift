@@ -27,6 +27,7 @@ struct SettingsView: View {
     @State private var confirmPasswordDraft = ""
     @State private var confirmDelete = false
     @State private var accountError: String?
+    @State private var showPrivacyPolicy = false
  
     var body: some View {
         ZStack {
@@ -80,6 +81,9 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $editingBirthday) {
             BirthdayEditor(birthday: $settings.birthday)
+        }
+        .sheet(isPresented: $showPrivacyPolicy) {
+            PrivacyPolicyView()
         }
         .confirmationDialog("Sign out of MemoMe?",
                             isPresented: $confirmSignOut, titleVisibility: .visible) {
@@ -255,10 +259,10 @@ struct SettingsView: View {
                 Slider(value: $settings.voiceSpeed, in: 0...1)
                     .tint(AppColor.ninja)
                 Button {
-                    SpeechService.shared.speak(
+                    SpeechService.shared.speakLocalized(
                         "Hello, this is how I will read your memories.",
-                        speed: settings.voiceSpeed,
-                        languageCode: settings.language.rawValue)
+                        language: settings.language,
+                        speed: settings.voiceSpeed)
                 } label: {
                     Label("Test voice", systemImage: "speaker.wave.2.fill")
                         .font(.subheadline.weight(.semibold))
@@ -324,6 +328,17 @@ struct SettingsView: View {
             } trailing: {
                 Image(systemName: "chevron.right").foregroundStyle(AppColor.textSecondary)
             } action: { }
+
+            Divider().overlay(AppColor.textSecondary.opacity(0.25))
+
+            // Privacy Policy
+            SettingRow {
+                Text("Privacy Policy")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(AppColor.textPrimary)
+            } trailing: {
+                Image(systemName: "chevron.right").foregroundStyle(AppColor.textSecondary)
+            } action: { showPrivacyPolicy = true }
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, Spacing.xs)

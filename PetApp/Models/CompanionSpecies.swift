@@ -13,7 +13,9 @@
 import SwiftUI
 
 enum PetSpecies: String, CaseIterable, Identifiable, Codable {
-    case kangaroo, cat, cow, dog, fox
+    // Only species with real art in Assets.xcassets (plus the animated Rive
+    // cat). Add a case here when its image is added to the catalog.
+    case cat, dog, cow, rabbit, goldfish
 
     var id: String { rawValue }
 
@@ -21,7 +23,9 @@ enum PetSpecies: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .cat:      return "Cat"
         case .dog:      return "Dog"
-        case .fox:      return "Fox"
+        case .cow:      return "Cow"
+        case .rabbit:   return "Rabbit"
+        case .goldfish: return "Goldfish"
         }
     }
 
@@ -32,9 +36,8 @@ enum PetSpecies: String, CaseIterable, Identifiable, Codable {
         case .cat:      return "Cat"
         case .dog:      return "Dog"
         case .cow:      return "cow1"
-        case .dog:      return "dog1"
-        case .fox:      return "Fox"
-
+        case .rabbit:   return "Rabbit"
+        case .goldfish: return "Goldfish"
         }
     }
 

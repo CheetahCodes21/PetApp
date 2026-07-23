@@ -57,6 +57,15 @@ final class SpeechService {
         synthesizer.speak(utterance)
     }
 
+    /// Speaks `englishText` in the app's selected `language`: uses the language's
+    /// translation and matching voice when one exists, otherwise reads the
+    /// English text with an English voice (never English words in a foreign
+    /// accent). This is the read-aloud entry point callers should use.
+    func speakLocalized(_ englishText: String, language: AppLanguage, speed: Double) {
+        let resolved = language.spoken(englishText)
+        speak(resolved.text, speed: speed, languageCode: resolved.voiceLanguage)
+    }
+
     /// Plays a bundled clip through the speaker. Returns false if it couldn't be
     /// loaded, so the caller can fall back to on-device speech.
     private func playClip(at url: URL) -> Bool {

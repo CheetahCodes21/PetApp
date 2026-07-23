@@ -2,8 +2,9 @@
 //  LoadingOverlay.swift
 //  PetApp
 //
-//  Frosted-glass loading overlay that blurs the screen behind it and plays
-//  the bundled portal Lottie animation while an async task is in progress.
+//  Frosted-glass loading overlay that softly blurs the screen behind it and
+//  plays the bundled loading Lottie animation while an async task is in
+//  progress. Styled to match the app's lavender theme.
 //
 
 import SwiftUI
@@ -12,31 +13,39 @@ struct LoadingOverlay: View {
     var message: String = "Just a moment…"
 
     @State private var pulse = false
+    @State private var appeared = false
 
     var body: some View {
         ZStack {
-            // Frosted blur of whatever is behind the overlay.
+            // Frosted blur + a gentle lavender wash over whatever is behind.
             Rectangle()
                 .fill(.ultraThinMaterial)
+                .ignoresSafeArea()
+            AppColor.thistle.opacity(0.25)
                 .ignoresSafeArea()
 
             VStack(spacing: Spacing.lg) {
                 ZStack {
-                    // Soft glowing aura behind the animation.
+                    // Soft breathing glow behind the animation.
                     Circle()
-                        .fill(AppColor.ninja.opacity(0.3))
-                        .frame(width: 200, height: 200)
-                        .blur(radius: 45)
-                        .scaleEffect(pulse ? 1.12 : 0.9)
+                        .fill(
+                            RadialGradient(
+                                colors: [AppColor.ninja.opacity(0.45), .clear],
+                                center: .center, startRadius: 4, endRadius: 130)
+                        )
+                        .frame(width: 240, height: 240)
+                        .blur(radius: 24)
+                        .scaleEffect(pulse ? 1.1 : 0.85)
 
-                    LottieView(name: "LoadingPortal")
-                        .frame(width: 240, height: 120)
+                    LottieView(name: "LoadingPage")
+                        .frame(width: 260, height: 130)
                 }
 
-                Text(message)
+                Text(LocalizedStringKey(message))
                     .font(.headline)
                     .foregroundStyle(AppColor.textPrimary)
-                    .opacity(pulse ? 1.0 : 0.55)
+                    .opacity(pulse ? 1.0 : 0.6)
+                    .accessibilityHidden(true)
             }
             .padding(.vertical, Spacing.xl)
             .padding(.horizontal, Spacing.xxl)
@@ -48,21 +57,27 @@ struct LoadingOverlay: View {
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
                     .stroke(
                         LinearGradient(
-                            colors: [AppColor.ninja.opacity(0.55), AppColor.ninja.opacity(0.05)],
+                            colors: [AppColor.ninja.opacity(0.55),
+                                     AppColor.blackberry.opacity(0.12)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing),
                         lineWidth: 1)
             )
-            .shadow(color: AppColor.ninja.opacity(0.28), radius: 28, y: 12)
+            .shadow(color: AppColor.blackberry.opacity(0.22), radius: 30, y: 14)
             .padding(.horizontal, Spacing.xl)
+            .scaleEffect(appeared ? 1.0 : 0.92)
+            .opacity(appeared ? 1.0 : 0.0)
         }
         .onAppear {
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                appeared = true
+            }
+            withAnimation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true)) {
                 pulse = true
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(message)
+        .accessibilityLabel(Text(LocalizedStringKey(message)))
     }
 }
 

@@ -27,16 +27,18 @@ import SwiftData
  
 extension SavedMemory {
     @discardableResult
-    func persist(in context: ModelContext, companion: Companion? = nil) throws -> Memory {
+    func persist(in context: ModelContext,
+                 companion: Companion? = nil,
+                 ownerId: String? = nil) throws -> Memory {
         let audioData = try Data(contentsOf: MemoryStore.shared.audioURL(named: audioFileName))
         let newAudioFileName = try FileStorageService.saveAudio(data: audioData, fileName: audioFileName)
- 
+
         var newPhotoFileName: String?
         if let photoFileName {
             let photoData = try Data(contentsOf: MemoryStore.shared.photoURL(named: photoFileName))
             newPhotoFileName = try FileStorageService.savePhoto(data: photoData, fileName: photoFileName)
         }
- 
+
         let memory = Memory(
             id: id,
             title: title,
@@ -45,7 +47,9 @@ extension SavedMemory {
             createdAt: createdAt,
             audioFileName: newAudioFileName,
             photoFileName: newPhotoFileName,
-            companion: companion
+            companion: companion,
+            // Prefer an explicit owner id; fall back to the companion's owner.
+            ownerId: ownerId ?? companion?.owner?.id.uuidString
         )
         context.insert(memory)
         try context.save()

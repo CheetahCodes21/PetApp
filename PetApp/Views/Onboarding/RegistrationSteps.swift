@@ -42,8 +42,8 @@ struct GetStartedStep: View {
  
     private var chooseContent: some View {
         VStack(spacing: Spacing.lg) {
-            Text("🐤")
-                .font(.system(size: 88))
+            SVGImageView(name: "RegistrationMascot")
+                .frame(width: 200, height: 200)
                 .padding(.top, Spacing.md)
                 .accessibilityHidden(true)
  
@@ -219,9 +219,26 @@ struct PermissionsStep: View {
     @ObservedObject var permissions: PermissionsManager
     let onBack: () -> Void
     let onNext: () -> Void
- 
+
     @State private var requesting = false
- 
+    /// Drives the staggered entrance + header pulse.
+    @State private var appeared = false
+    @State private var pulse = false
+
+    private var allGranted: Bool {
+        AppPermission.allCases.allSatisfy { permissions.state(for: $0) == .granted }
+    }
+
+    /// Distinct accent per permission so the cards feel lively.
+    private func tint(_ permission: AppPermission) -> Color {
+        switch permission {
+        case .microphone:    return Color(hex: "#5A9BD4")
+        case .camera:        return Color(hex: "#E4739A")
+        case .photos:        return Color(hex: "#5EAE7E")
+        case .notifications: return Color(hex: "#F2A65A")
+        }
+    }
+
     var body: some View {
         StepScaffold(title: "A few permissions",
                      subtitle: "MemoMe only asks for what it needs to help you.",
@@ -229,65 +246,150 @@ struct PermissionsStep: View {
                      primaryTitle: "Continue",
                      onPrimary: onNext) {
             VStack(spacing: Spacing.md) {
-                ForEach(AppPermission.allCases) { permission in
+                header
+
+                ForEach(Array(AppPermission.allCases.enumerated()), id: \.element) { index, permission in
                     row(permission)
+                        .opacity(appeared ? 1 : 0)
+                        .offset(y: appeared ? 0 : 18)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8)
+                            .delay(0.08 * Double(index) + 0.15), value: appeared)
                 }
- 
-                Button {
-                    Task {
-                        requesting = true
-                        await permissions.requestAll()
-                        requesting = false
-                    }
-                } label: {
-                    Text(requesting ? "Requesting…" : "Allow access")
-                }
-                .buttonStyle(FilledButtonStyle(background: AppColor.ninja))
-                .disabled(requesting)
-                .padding(.top, Spacing.xs)
+
+                allowButton
+                    .padding(.top, Spacing.xs)
+            }
+        }
+        .onAppear {
+            appeared = true
+            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
+                pulse = true
             }
         }
     }
- 
+
+    // MARK: Header — pulsing privacy badge
+
+    private var header: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(colors: [AppColor.ninja.opacity(0.35), .clear],
+                                   center: .center, startRadius: 2, endRadius: 70)
+                )
+                .frame(width: 150, height: 150)
+                .scaleEffect(pulse ? 1.12 : 0.9)
+
+            Circle()
+                .stroke(AppColor.ninja.opacity(0.25), lineWidth: 1.5)
+                .frame(width: pulse ? 108 : 88, height: pulse ? 108 : 88)
+                .opacity(pulse ? 0 : 0.9)
+
+            Circle()
+                .fill(LinearGradient(colors: [AppColor.ninja, AppColor.blackberry],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .frame(width: 76, height: 76)
+                .shadow(color: AppColor.blackberry.opacity(0.3), radius: 12, y: 6)
+
+            Image(systemName: allGranted ? "checkmark.shield.fill" : "hand.raised.fill")
+                .font(.system(size: 32, weight: .semibold))
+                .foregroundStyle(.white)
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .frame(height: 150)
+        .accessibilityHidden(true)
+    }
+
+    // MARK: Permission card
+
     private func row(_ permission: AppPermission) -> some View {
-        HStack(alignment: .top, spacing: Spacing.md) {
+        let state = permissions.state(for: permission)
+        let accent = tint(permission)
+        return HStack(spacing: Spacing.md) {
             Image(systemName: permission.systemImage)
-                .font(.title2)
-                .foregroundStyle(AppColor.ninja)
-                .frame(width: 40)
- 
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 46, height: 46)
+                .background(
+                    LinearGradient(colors: [accent, accent.opacity(0.7)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+                .shadow(color: accent.opacity(0.35), radius: 6, y: 3)
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(LocalizedStringKey(permission.title))
                     .font(.headline)
                     .foregroundStyle(AppColor.textPrimary)
                 Text(LocalizedStringKey(permission.explanation))
-                    .font(.body)
+                    .font(.subheadline)
                     .foregroundStyle(AppColor.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
- 
-            Spacer()
- 
-            statusIcon(permissions.state(for: permission))
+
+            Spacer(minLength: Spacing.xs)
+
+            statusIcon(state)
         }
         .padding(Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(AppColor.textSecondary.opacity(0.15), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(state == .granted ? accent.opacity(0.5) : AppColor.textSecondary.opacity(0.12),
+                        lineWidth: state == .granted ? 1.5 : 1)
         )
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: state)
     }
- 
+
     @ViewBuilder
     private func statusIcon(_ state: PermissionState) -> some View {
         switch state {
         case .granted:
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(AppColor.success)
+            Image(systemName: "checkmark.circle.fill")
+                .font(.title2)
+                .foregroundStyle(AppColor.success)
+                .transition(.scale.combined(with: .opacity))
         case .denied:
-            Image(systemName: "xmark.circle.fill").foregroundStyle(.red.opacity(0.7))
+            Image(systemName: "xmark.circle.fill")
+                .font(.title2)
+                .foregroundStyle(.red.opacity(0.7))
+                .transition(.scale.combined(with: .opacity))
         case .notDetermined:
-            Image(systemName: "circle").foregroundStyle(AppColor.textSecondary.opacity(0.4))
+            Circle()
+                .strokeBorder(AppColor.textSecondary.opacity(0.3),
+                              style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                .frame(width: 22, height: 22)
         }
+    }
+
+    // MARK: Allow button
+
+    private var allowButton: some View {
+        Button {
+            Task {
+                requesting = true
+                await permissions.requestAll()
+                requesting = false
+            }
+        } label: {
+            HStack(spacing: Spacing.xs) {
+                if requesting {
+                    ProgressView().tint(.white)
+                    Text("Requesting…")
+                } else if allGranted {
+                    Image(systemName: "checkmark")
+                    Text("All set")
+                } else {
+                    Image(systemName: "sparkles")
+                    Text("Allow access")
+                }
+            }
+        }
+        .buttonStyle(FilledButtonStyle(background: allGranted ? AppColor.success : AppColor.ninja))
+        .disabled(requesting || allGranted)
+        .animation(.easeInOut, value: allGranted)
     }
 }
  
@@ -356,10 +458,10 @@ struct AccessibilityStep: View {
                         Slider(value: $settings.voiceSpeed, in: 0...1)
                             .tint(AppColor.ninja)
                         Button {
-                            SpeechService.shared.speak(
+                            SpeechService.shared.speakLocalized(
                                 "Hello, this is how I will read your memories.",
-                                speed: settings.voiceSpeed,
-                                languageCode: settings.language.rawValue)
+                                language: settings.language,
+                                speed: settings.voiceSpeed)
                         } label: {
                             Label("Test voice", systemImage: "speaker.wave.2.fill")
                                 .font(.headline)
