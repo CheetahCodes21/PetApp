@@ -37,7 +37,7 @@ private func companionUIImage() -> UIImage? {
  
 /// The companion's chosen recolour, matching the app's colour picker
 /// (CompanionColorOption) — defaults to purple, same as in-app.
-private func companionColor(_ data: PetWidgetData) -> Color {
+private func companionTint(_ data: PetWidgetData) -> Color {
     guard let hex = data.companionColorHex else { return Color(hex: "#6B4E9E") }
     return Color(hex: hex)
 }
@@ -57,48 +57,49 @@ private func greeting(_ date: Date) -> String {
 private struct CompanionAvatar: View {
     let data: PetWidgetData
     var size: CGFloat = 64
-    /// Tint of the ring/backing (light on plum, deeper on lavender).
-    var onDark: Bool = true
  
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(onDark ? Color.white.opacity(0.16) : Color.wNinja.opacity(0.14))
+        Group {
             if let ui = companionUIImage(), !data.companionAssetName.isEmpty {
                 // Real static artwork (dog, cow, rabbit, goldfish) — already
                 // rendered in its fixed colour, no tinting needed.
                 Image(uiImage: ui)
                     .resizable().scaledToFit()
-                    .padding(size * 0.14)
             } else if data.companionKind != nil {
                 // Animated companions (the Rive cat, or any plant) have no
-                // exported photo, but do have a still "idle" template image
-                // bundled with the widget — recolour it to match what the
-                // user picked in the app.
-                Image(data.companionKind == "plant" ? "Plant idle" : "Cat Idle")
-                    .resizable()
-                    .renderingMode(.template)
-                    .scaledToFit()
-                    .padding(size * 0.14)
-                    .foregroundStyle(companionColor(data))
+                // exported photo, but do have a still "idle" illustration
+                // bundled with the widget. It's a fully coloured picture,
+                // not a monochrome template, so a flat tint would flatten
+                // all its shading into one solid colour — instead, blend in
+                // the chosen colour's hue/saturation while keeping each
+                // pixel's original luminance, so shading and outlines stay
+                // visible and it reads as e.g. "pink cat" rather than a
+                // silhouette. (The masked eyes/nose/stars will shift colour
+                // too, since this is one flattened image, not separate
+                // layers like the in-app Rive version.)
+                let assetName = data.companionKind == "plant" ? "Plant idle" : "Cat Idle"
+                ZStack {
+                    Image(assetName).resizable().scaledToFit()
+                    companionTint(data).blendMode(.color)
+                }
+                .compositingGroup()
+                .mask(Image(assetName).resizable().scaledToFit())
             } else {
                 Text(data.moodEmoji)
                     .font(.system(size: size * 0.5))
             }
         }
         .frame(width: size, height: size)
-        .overlay(Circle().stroke(onDark ? Color.white.opacity(0.25) : Color.wNinja.opacity(0.25),
-                                 lineWidth: 1))
     }
 }
  
 private struct HeartsRow: View {
     let filled: Int          // 0...3 mood hearts
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 5) {
             ForEach(0..<3, id: \.self) { i in
                 Image(systemName: i < filled ? "heart.fill" : "heart")
-                    .font(.caption2)
+                    .font(.title3)
                     .foregroundStyle(i < filled ? Color.wHeart : Color.wHeart.opacity(0.3))
             }
         }
@@ -109,8 +110,8 @@ private struct HeartsRow: View {
 /// whatever avatar sits beside it (used to make the daily question read as
 /// something the companion is "saying").
 private struct SpeechBubbleShape: Shape {
-    var cornerRadius: CGFloat = 14
-    var tailSize: CGFloat = 8
+    var cornerRadius: CGFloat = 16
+    var tailSize: CGFloat = 9
  
     func path(in rect: CGRect) -> Path {
         let bubbleRect = CGRect(x: rect.minX + tailSize, y: rect.minY,
@@ -133,13 +134,13 @@ private struct SpeechBubble: View {
  
     var body: some View {
         Text(text)
-            .font(.subheadline.weight(.bold))
+            .font(.system(size: 18, weight: .bold))
             .foregroundStyle(textColor)
-            .lineLimit(2)
+            .lineLimit(3)
             .minimumScaleFactor(0.85)
-            .padding(.vertical, 7)
-            .padding(.leading, 8 + 8)   // tailSize + normal inset
-            .padding(.trailing, 8)
+            .padding(.vertical, 12)
+            .padding(.leading, 9 + 10)   // tailSize + normal inset
+            .padding(.trailing, 10)
             .fixedSize(horizontal: false, vertical: true)
             .background(SpeechBubbleShape().fill(fill))
     }
@@ -179,7 +180,7 @@ private struct CompanionView: View {
     private var small: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                CompanionAvatar(data: d, size: 46, onDark: false)
+                CompanionAvatar(data: d, size: 56)
                 Spacer()
                 Label("\(d.dayStreak)", systemImage: "flame.fill")
                     .font(.caption.weight(.bold))
@@ -197,7 +198,7 @@ private struct CompanionView: View {
  
     private var medium: some View {
         HStack(spacing: 14) {
-            CompanionAvatar(data: d, size: 78, onDark: false)
+            CompanionAvatar(data: d, size: 92)
  
             VStack(alignment: .leading, spacing: 5) {
                 Text("\(greeting(entry.date)), \(d.userFirstName)")
@@ -269,7 +270,7 @@ private struct QuestionReadyView: View {
             emptyState
         } else {
             HStack(spacing: 14) {
-                CompanionAvatar(data: d, size: 78, onDark: false)
+                CompanionAvatar(data: d, size: 92)
  
                 VStack(alignment: .leading, spacing: 8) {
                     SpeechBubble(text: d.todaysQuestion, fill: .wSnow)

@@ -9,14 +9,19 @@
 //  SETUP REQUIRED (Xcode, not code):
 //  1. Enable "App Groups" capability on BOTH the PetApp app target and the
 //     new Widget Extension target.
-//  2. Create/select the same group id on both, e.g. "group.com.yourteam.petapp",
-//     and update AppGroup.id below to match.
+//  2. Create/select the same group id on both — this must match the id in
+//     PetApp.entitlements and PetAppWidgetsExtension.entitlements exactly,
+//     and match AppGroup.id below. A mismatch doesn't crash or error; it
+//     just silently falls back to each process's own separate UserDefaults,
+//     so the widget always reads empty/stale data even though the app has
+//     real data — that's what happened here (this was "group.com.yourteam.petapp",
+//     a placeholder that didn't match the registered "group.com.AppleFoundationProgram.PetApp").
 //
  
 import Foundation
  
 enum AppGroup {
-    static let id = "group.com.yourteam.petapp"
+    static let id = "group.com.AppleFoundationProgram.PetApp"
 }
  
 /// Snapshot of everything the widgets/Live Activity need to render.
