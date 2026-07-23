@@ -1,4 +1,3 @@
-
 //
 //  HomeView.swift
 //  PetApp
@@ -23,17 +22,17 @@ struct HomeView: View {
     @State private var showDailyQuestion = false
     @State private var showRecording = false
     @State private var showEditCompanion = false
-
+ 
     /// The question resolved by the daily-question sheet, then answered in the
     /// recorder. `pendingQuestion` holds it until the sheet has dismissed so the
     /// recorder is only presented once the sheet is fully gone.
     @State private var resolvedQuestion: String?
     @State private var pendingQuestion: String?
-
+ 
     /// Bumped to play the Rive companion's Feed / Talk one-shot animations.
     @State private var feedToken = 0
     @State private var talkToken = 0
-
+ 
     private let amber = Color(hex: "#F7C873")
     private let amberSoft = Color(hex: "#FBE6BE")
     private let amberText = Color(hex: "#C77A22")
@@ -44,7 +43,7 @@ struct HomeView: View {
     private var companion: Companion? {
         companions.first { $0.owner?.id == auth.userId }
     }
-
+ 
     /// Memories belonging to the signed-in user. Matched by the stamped
     /// `ownerId`, falling back to the companion's owner, and including legacy
     /// memories that predate owner stamping (ownerId == nil) so nothing the
@@ -74,7 +73,13 @@ struct HomeView: View {
                 .padding(.bottom, Spacing.xl)
             }
         }
-        .fullScreenCover(isPresented: $showEditCompanion) {
+        .fullScreenCover(isPresented: $showEditCompanion, onDismiss: {
+            // Editing changes the existing companion in place — it doesn't
+            // change companions.count or allMemories.count, so neither of
+            // the onChange syncs below would ever fire for it. Resync here
+            // instead, once the edit screen has actually closed.
+            syncWidget()
+        }) {
             if let companion {
                 EditPetView(companion: companion)
             }
@@ -109,7 +114,7 @@ struct HomeView: View {
         .onChange(of: companions.count) { _, _ in syncWidget() }
         .onChange(of: allMemories.count) { _, _ in syncWidget() }
     }
-
+ 
     /// Persists a just-recorded memory, stamped with the current user so it
     /// shows in Archive. Logs on failure instead of failing silently.
     private func persistMemory(_ saved: SavedMemory) {
@@ -122,7 +127,7 @@ struct HomeView: View {
             print("[Memory] Failed to save memory to Archive: \(error.localizedDescription)")
         }
     }
-
+ 
     // MARK: - Header
  
     private var header: some View {
@@ -165,7 +170,7 @@ struct HomeView: View {
                          .font(.body)
                      })
             .accessibilityLabel("Happiness, \(filledHearts) of 3")
-
+ 
             statCard(background: amberSoft,
                      accent: amberText,
                      badgeBackground: amber.opacity(0.45),
@@ -186,7 +191,7 @@ struct HomeView: View {
  
     /// Food-bar hearts, derived from how long since the companion was cared for.
     private var filledHearts: Int { companion?.hungerHearts ?? 3 }
-
+ 
     /// Face reflecting the happiness level: 3 hearts happy, 2 neutral, 1 sad.
     private var moodEmoji: String {
         switch filledHearts {
@@ -198,7 +203,7 @@ struct HomeView: View {
  
     private var careVerb: String { companion?.careVerb ?? "Feed" }
     private var careIcon: String { companion?.kind == .plant ? "drop.fill" : "fork.knife" }
-
+ 
     /// Streak = consecutive days (ending today) that have at least one memory.
     private var streakDays: Int {
         let calendar = Calendar.current
@@ -420,4 +425,3 @@ struct HomeView: View {
         .environmentObject(AppSettings())
         .modelContainer(for: [Companion.self, Memory.self, User.self], inMemory: true)
 }
- 

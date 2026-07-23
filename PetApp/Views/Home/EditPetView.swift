@@ -240,12 +240,12 @@ struct EditPetView: View {
         VStack(spacing: Spacing.sm) {
             Text("Significant Action")
                 .font(.headline).foregroundStyle(Color(hex: "#C0504D"))
-            Text("Changing your pet might reset your current progress with your pet and cannot be undone. However your journal will be as it is on the archive.")
+            Text("Changing your companion might reset your current progress with your pet and cannot be undone. However your journal will be as it is on the archive.")
                 .font(.subheadline)
                 .foregroundStyle(AppColor.textSecondary)
                 .multilineTextAlignment(.center)
             Button { showChangePet = true } label: {
-                Text("Change Pet").foregroundStyle(Color(hex: "#C0504D"))
+                Text("Change Companion").foregroundStyle(Color(hex: "#C0504D"))
             }
             .buttonStyle(OutlinedButtonStyle(border: Color(hex: "#C0504D")))
         }
@@ -406,7 +406,7 @@ private struct ChangePetConfirmView: View {
                         .background(Circle().fill(.white))
                 }
 
-                (Text("You're going to change your pet to a ")
+                (Text("You're going to change your companion to a ")
                     .foregroundStyle(AppColor.textPrimary)
                  + Text(option.displayName).foregroundStyle(AppColor.ninja).bold()
                  + Text(".").foregroundStyle(AppColor.textPrimary))
