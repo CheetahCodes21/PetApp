@@ -106,7 +106,7 @@ struct SettingsView: View {
                 .disabled(passwordDraft.isEmpty || passwordDraft != confirmPasswordDraft)
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("At least 6 characters. Both fields must match.")
+            Text("\(PasswordPolicy.requirementsSummary) Both fields must match.")
         }
         .confirmationDialog("Delete your account?",
                             isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -138,6 +138,10 @@ struct SettingsView: View {
     private func savePassword() async {
         guard passwordDraft == confirmPasswordDraft else {
             accountError = "Those passwords don't match. Please try again."
+            return
+        }
+        guard PasswordPolicy.isValid(passwordDraft) else {
+            accountError = "Password must contain: \(PasswordPolicy.requirementsSummary)"
             return
         }
         do {
@@ -328,9 +332,9 @@ struct SettingsView: View {
             } trailing: {
                 Image(systemName: "chevron.right").foregroundStyle(AppColor.textSecondary)
             } action: { }
-
+ 
             Divider().overlay(AppColor.textSecondary.opacity(0.25))
-
+ 
             // Privacy Policy
             SettingRow {
                 Text("Privacy Policy")
@@ -549,4 +553,3 @@ private struct BirthdayEditor: View {
         SettingsView().environmentObject(AppSettings())
     }
 }
- 

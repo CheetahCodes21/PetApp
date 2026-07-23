@@ -30,6 +30,7 @@ struct MemoryDetailView: View {
     @State private var showShareSheet = false
     @State private var showPhotoPicker = false
     @State private var showReRecord = false
+    @State private var isReplacingAudio = false
     @State private var showSavedConfirmation = false
     @StateObject private var player = MemoryAudioPlayer()
  
@@ -100,11 +101,18 @@ struct MemoryDetailView: View {
                 attachPhoto(image)
             }
         }
-        .memoryRecorder(isPresented: $showReRecord, question: "Record a new version of \"\(memory.title)\"") { saved in
-            replaceAudio(with: saved)
+        .audioReplacement(isPresented: $showReRecord, isProcessing: $isReplacingAudio,
+                          question: "Record a new version of \"\(memory.title)\"") { audioFileName, transcript in
+            replaceAudio(fileName: audioFileName, transcript: transcript)
         }
         .onAppear { captureOriginalIfNeeded() }
-        .onDisappear { player.stop() }
+        .onDisappear {
+            player.stop()
+            // Leaving without pressing "Save changes" (back button, swipe-back,
+            // switching tabs) should discard the edit, not keep it. Save is
+            // the only action that's supposed to make edits stick.
+            if isDirty { cancelEdits() }
+        }
     }
  
     // MARK: - Sections
@@ -151,8 +159,9 @@ struct MemoryDetailView: View {
     private func photoIconButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.title2)
+                .font(.system(size: 30))
                 .foregroundStyle(.white, .black.opacity(0.5))
+                .frame(width: 44, height: 44)
         }
         .accessibilityLabel(label)
     }
@@ -170,10 +179,12 @@ struct MemoryDetailView: View {
  
     private var dateField: some View {
         fieldContainer(label: "Date") {
+            // A memory can't have happened in the future — same rule as the
+            // initial save (SaveMemoryView), just missing here before.
             DatePicker("", selection: Binding(
                 get: { memory.date },
                 set: { memory.date = $0; markDirty() }
-            ), displayedComponents: .date)
+            ), in: ...Date(), displayedComponents: .date)
             .labelsHidden()
         }
     }
@@ -193,7 +204,9 @@ struct MemoryDetailView: View {
  
     private var audioSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            fieldLabel("Recording")
+            Text("Recording")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppColor.textSecondary)
             HStack(spacing: Spacing.md) {
                 Button {
                     player.togglePlayback(fileName: memory.audioFileName)
@@ -211,10 +224,16 @@ struct MemoryDetailView: View {
                     player.stop()
                     showReRecord = true
                 } label: {
-                    Image(systemName: "pencil.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(AppColor.ninja)
+                    if isReplacingAudio {
+                        ProgressView()
+                            .frame(width: 22, height: 22)
+                    } else {
+                        Image(systemName: "pencil.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(AppColor.ninja)
+                    }
                 }
+                .disabled(isReplacingAudio)
                 .accessibilityLabel("Re-record")
             }
             .padding(Spacing.sm)
@@ -348,16 +367,17 @@ struct MemoryDetailView: View {
     }
  
     private func delete() {
-        // Soft delete so a purge job (or future "recently deleted") can
-        // still recover it — matches the isDeleted field's intent.
-        memory.isDeleted = true
-        memory.deletedAt = .now
-        try? context.save()
- 
+        // There's no "recently deleted" screen or purge job that ever acts on
+        // isDeleted/deletedAt, so soft-deleting only hid the memory from the
+        // Archive list — the record (and its files) stuck around forever.
+        // Delete for real.
         FileStorageService.deleteAudio(fileName: memory.audioFileName)
         if let photoFileName = memory.photoFileName {
             FileStorageService.deletePhoto(fileName: photoFileName)
         }
+ 
+        context.delete(memory)
+        try? context.save()
  
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         dismiss()
@@ -376,18 +396,16 @@ struct MemoryDetailView: View {
         markDirty()
     }
  
-    /// Called when re-recording finishes. Moves the new audio into
-    /// FileStorageService's shared container (same as SavedMemoryBridge),
-    /// and updates the transcript to match — the old transcript won't
-    /// describe the new recording. Both are revertible via Cancel until
-    /// Save is pressed.
-    private func replaceAudio(with saved: SavedMemory) {
-        guard let audioData = try? Data(contentsOf: MemoryStore.shared.audioURL(named: saved.audioFileName)),
-              let newAudioFileName = try? FileStorageService.saveAudio(data: audioData, fileName: saved.audioFileName)
-        else { return }
- 
-        memory.audioFileName = newAudioFileName
-        memory.transcript = saved.transcript
+    /// Called when re-recording finishes. `audioFileName` has already been
+    /// moved into FileStorageService's shared container by the
+    /// `audioReplacement` modifier. Transcript is nil if transcription
+    /// failed or wasn't available — keep the old transcript rather than
+    /// blanking it out. Both are revertible via Cancel until Save is pressed.
+    private func replaceAudio(fileName audioFileName: String, transcript: String?) {
+        memory.audioFileName = audioFileName
+        if let transcript {
+            memory.transcript = transcript
+        }
         markDirty()
     }
 }
@@ -436,6 +454,7 @@ final class MemoryAudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate
     @Published private(set) var progress: Double = 0
  
     private var player: AVAudioPlayer?
+    private var loadedFileName: String?
     private var timer: Timer?
  
     func togglePlayback(fileName: String) {
@@ -449,9 +468,14 @@ final class MemoryAudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate
     private func play(fileName: String) {
         let url = FileStorageService.audioURL(for: fileName)
         do {
-            if player == nil {
+            // Recreate the player if the file changed (e.g. after re-record)
+            // instead of forever caching the first file it played, which was
+            // leaving playback stuck on the old audio.
+            if player == nil || loadedFileName != fileName {
                 player = try AVAudioPlayer(contentsOf: url)
                 player?.delegate = self
+                loadedFileName = fileName
+                progress = 0
             }
             player?.play()
             isPlaying = true
