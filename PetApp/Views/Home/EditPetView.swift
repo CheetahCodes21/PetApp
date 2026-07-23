@@ -36,7 +36,7 @@ struct CompanionOption: Identifiable, Hashable {
             }
         } else if let plant {
             if plant.isAnimated {
-                RivePlantView(isSick: false, color: color)
+                RivePlantView(color: color)
             } else {
                 LottieView(name: plant.lottieName)
             }
@@ -132,7 +132,7 @@ struct EditPetView: View {
         case .plant:
             let plant = PlantSpecies(rawValue: companion.plantSpeciesRaw) ?? .default
             if plant.isAnimated {
-                RivePlantView(isSick: false, color: companionColor)
+                RivePlantView(color: companionColor)
             } else {
                 LottieView(name: plant.lottieName)
             }

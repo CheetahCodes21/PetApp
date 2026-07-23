@@ -146,12 +146,12 @@ struct DailyQuestionView: View {
     }
 
     private func readAloud(_ text: String) {
-        // Speak the localized wording where a translation exists; untranslated
-        // keys resolve back to the English text.
-        let spoken = String(localized: String.LocalizationValue(text))
-        SpeechService.shared.speak(spoken,
-                                   speed: settings.voiceSpeed,
-                                   languageCode: settings.language.rawValue)
+        // Speak in the in-app selected language: translated wording + matching
+        // voice where a translation exists, English text + English voice
+        // otherwise (so we never read English words in a foreign accent).
+        SpeechService.shared.speakLocalized(text,
+                                            language: settings.language,
+                                            speed: settings.voiceSpeed)
     }
 
     private func stopSpeaking() {

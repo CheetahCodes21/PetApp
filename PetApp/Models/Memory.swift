@@ -27,7 +27,13 @@ final class Memory {
     var deletedAt: Date?
  
     var companion: Companion?
- 
+
+    /// The signed-in user's id (UUID string) at save time. Stamped directly so
+    /// a memory is always attributable to its owner, even if the companion
+    /// relationship is missing — this is what Home/Archive filter on. Optional
+    /// for lightweight migration of memories saved before this field existed.
+    var ownerId: String?
+
     init(
         id: String = UUID().uuidString,
         title: String,
@@ -39,7 +45,8 @@ final class Memory {
         isFavourite: Bool = false,
         isDeleted: Bool = false,
         deletedAt: Date? = nil,
-        companion: Companion? = nil
+        companion: Companion? = nil,
+        ownerId: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -52,6 +59,7 @@ final class Memory {
         self.isDeleted = isDeleted
         self.deletedAt = deletedAt
         self.companion = companion
+        self.ownerId = ownerId
     }
 }
 

@@ -18,12 +18,14 @@ enum FileStorageService {
     private static let appGroupIdentifier = AppGroup.id
  
     private static var containerURL: URL {
-        guard let url = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: appGroupIdentifier
-        ) else {
-            fatalError("App Group container not configured — check entitlements and appGroupIdentifier.")
+        // Prefer the shared App Group container (so widgets can read the files),
+        // but fall back to the app's own Documents directory if it's not
+        // available. Never crash — a memory must always be savable.
+        if let url = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: appGroupIdentifier) {
+            return url
         }
-        return url
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
  
     private static var audioDirectory: URL {

@@ -11,6 +11,7 @@
 
 import WidgetKit
 import SwiftUI
+import UIKit
 
 struct LockScreenPetWidget: Widget {
     let kind = "LockScreenPetWidget"
@@ -28,15 +29,21 @@ struct LockScreenPetWidget: Widget {
 private struct LockScreenPetView: View {
     let entry: PetEntry
 
+    private var d: PetWidgetData { entry.data }
+
     var body: some View {
         HStack(spacing: 10) {
-            Image(entry.data.companionAssetName)
-                .resizable()
-                .scaledToFit()
+            glyph
                 .frame(width: 34, height: 34)
 
             VStack(alignment: .leading, spacing: 2) {
-                if entry.data.isHungry {
+                if d.isSignedOut {
+                    Text("MemoMe")
+                        .font(.headline)
+                    Text("Open to meet your companion")
+                        .font(.caption)
+                        .lineLimit(2)
+                } else if entry.data.isHungry {
                     Text("Feed me!")
                         .font(.caption2.weight(.bold))
                     Text("Pet is hungry")
@@ -59,11 +66,27 @@ private struct LockScreenPetView: View {
             Spacer(minLength: 0)
         }
         .widgetURL(URL(string: "petapp://\(entry.data.isHungry ? "feed" : "question")"))
+        // (glyph defined below)
         .containerBackground(for: .widget) {
             // The system ignores this and applies its own tint/background
             // for accessory widgets on the Lock Screen — this is just here
             // to satisfy the required containerBackground API.
             Color.clear
+        }
+    }
+
+    /// Lock Screen widgets render in a single tint, so prefer a crisp SF Symbol
+    /// (pet/plant) unless a real companion photo was written.
+    @ViewBuilder
+    private var glyph: some View {
+        if !d.companionAssetName.isEmpty,
+           let container = FileManager.default
+               .containerURL(forSecurityApplicationGroupIdentifier: AppGroup.id),
+           let ui = UIImage(contentsOfFile: container.appendingPathComponent("companion.png").path) {
+            Image(uiImage: ui).resizable().scaledToFit()
+        } else {
+            Image(systemName: d.companionKind == "plant" ? "leaf.fill" : "pawprint.fill")
+                .resizable().scaledToFit().padding(3)
         }
     }
 }

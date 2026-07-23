@@ -11,17 +11,6 @@ import WidgetKit
 import SwiftUI
 import UIKit
 
-/// Loads the companion image the app wrote into the shared App Group
-/// container (the widget can't read the app's asset catalog directly).
-private func companionImage() -> Image {
-    if let container = FileManager.default
-        .containerURL(forSecurityApplicationGroupIdentifier: AppGroup.id),
-       let ui = UIImage(contentsOfFile: container.appendingPathComponent("companion.png").path) {
-        return Image(uiImage: ui)
-    }
-    return Image(systemName: "pawprint.fill")
-}
-
 // MARK: - Theme (mirrors the app's "App theme colours")
 
 private extension Color {
@@ -41,6 +30,163 @@ private var lavenderBackground: some View {
 private var plumBackground: some View {
     LinearGradient(colors: [Color.wBlackberry, Color(hex: "#2C1838")],
                    startPoint: .topLeading, endPoint: .bottomTrailing)
+}
+
+/// Loads the companion image the app wrote into the shared App Group container,
+/// if one exists (static animals only — the cat/plants have no static image).
+private func companionUIImage() -> UIImage? {
+    guard let container = FileManager.default
+        .containerURL(forSecurityApplicationGroupIdentifier: AppGroup.id) else { return nil }
+    return UIImage(contentsOfFile: container.appendingPathComponent("companion.png").path)
+}
+
+/// A time-of-day greeting.
+private func greeting(_ date: Date) -> String {
+    switch Calendar.current.component(.hour, from: date) {
+    case 5..<12:  return "Good morning"
+    case 12..<17: return "Good afternoon"
+    case 17..<22: return "Good evening"
+    default:      return "Hello"
+    }
+}
+
+// MARK: - Companion avatar (photo when available, else the mood face)
+
+private struct CompanionAvatar: View {
+    let data: PetWidgetData
+    var size: CGFloat = 64
+    /// Tint of the ring/backing (light on plum, deeper on lavender).
+    var onDark: Bool = true
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(onDark ? Color.white.opacity(0.16) : Color.wNinja.opacity(0.14))
+            if let ui = companionUIImage(), !data.companionAssetName.isEmpty {
+                Image(uiImage: ui)
+                    .resizable().scaledToFit()
+                    .padding(size * 0.14)
+            } else {
+                Text(data.moodEmoji)
+                    .font(.system(size: size * 0.5))
+            }
+        }
+        .frame(width: size, height: size)
+        .overlay(Circle().stroke(onDark ? Color.white.opacity(0.25) : Color.wNinja.opacity(0.25),
+                                 lineWidth: 1))
+    }
+}
+
+private struct HeartsRow: View {
+    let filled: Int          // 0...3 mood hearts
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<3, id: \.self) { i in
+                Image(systemName: i < filled ? "heart.fill" : "heart")
+                    .font(.caption2)
+                    .foregroundStyle(i < filled ? Color.wHeart : Color.wHeart.opacity(0.3))
+            }
+        }
+    }
+}
+
+// MARK: - Companion widget (small + medium) — the flagship
+
+struct CompanionWidget: Widget {
+    let kind = "CompanionWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: PetTimelineProvider()) { entry in
+            CompanionView(entry: entry)
+                .containerBackground(for: .widget) { lavenderBackground }
+        }
+        .configurationDisplayName("Your Companion")
+        .description("Your companion’s mood, your streak, and today’s question.")
+        .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
+private struct CompanionView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: PetEntry
+    private var d: PetWidgetData { entry.data }
+
+    var body: some View {
+        if d.isSignedOut {
+            emptyState
+        } else if family == .systemSmall {
+            small
+        } else {
+            medium
+        }
+    }
+
+    private var small: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                CompanionAvatar(data: d, size: 46, onDark: false)
+                Spacer()
+                Label("\(d.dayStreak)", systemImage: "flame.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color.wAmber)
+            }
+            Spacer(minLength: 2)
+            Text(d.companionName ?? "Companion")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(Color.wBlackberry)
+                .lineLimit(1)
+            HeartsRow(filled: d.moodHearts ?? 3)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    private var medium: some View {
+        HStack(spacing: 14) {
+            CompanionAvatar(data: d, size: 78, onDark: false)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("\(greeting(entry.date)), \(d.userFirstName)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.wNinja)
+                    .lineLimit(1)
+
+                Text(d.companionName ?? "Your companion")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(Color.wBlackberry)
+                    .lineLimit(1)
+
+                HeartsRow(filled: d.moodHearts ?? 3)
+
+                Spacer(minLength: 2)
+
+                HStack(spacing: 12) {
+                    stat(icon: "flame.fill", value: "\(d.dayStreak)", label: "streak", tint: .wAmber)
+                    stat(icon: "heart.fill", value: "\(d.memoriesSavedTotal)", label: "memories", tint: .wHeart)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    private func stat(icon: String, value: String, label: String, tint: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon).font(.caption2).foregroundStyle(tint)
+            Text(value).font(.subheadline.weight(.bold)).foregroundStyle(Color.wBlackberry)
+            Text(label).font(.caption2).foregroundStyle(Color.wNinja)
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Text("🐾").font(.system(size: family == .systemSmall ? 34 : 44))
+            Text("Open MemoMe to meet your companion")
+                .font(.caption.weight(.medium))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Color.wNinja)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 }
 
 // MARK: - Medium widget: "Today's question is ready"
@@ -65,13 +211,7 @@ private struct QuestionReadyView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            companionImage()
-                .resizable()
-                .scaledToFit()
-                .frame(width: 58, height: 58)
-                .padding(6)
-                .foregroundStyle(.white)
-                .background(Circle().fill(.white.opacity(0.14)))
+            CompanionAvatar(data: d, size: 58, onDark: true)
 
             VStack(alignment: .leading, spacing: 5) {
                 Text("Today's question")
@@ -185,6 +325,18 @@ private extension Color {
     }
 }
 
+#Preview("Companion", as: .systemMedium) {
+    CompanionWidget()
+} timeline: {
+    PetEntry(date: .now, data: .placeholder)
+}
+
+#Preview("Companion small", as: .systemSmall) {
+    CompanionWidget()
+} timeline: {
+    PetEntry(date: .now, data: .placeholder)
+}
+
 #Preview("Question Ready", as: .systemMedium) {
     QuestionReadyWidget()
 } timeline: {
@@ -193,12 +345,6 @@ private extension Color {
 
 #Preview("Streak", as: .systemSmall) {
     StreakWidget()
-} timeline: {
-    PetEntry(date: .now, data: .placeholder)
-}
-
-#Preview("Memories Saved", as: .systemSmall) {
-    MemoriesSavedWidget()
 } timeline: {
     PetEntry(date: .now, data: .placeholder)
 }

@@ -29,17 +29,20 @@ extension View {
     ///     screen (Dev 4).
     func memoryRecorder(isPresented: Binding<Bool>,
                         question: String? = nil,
+                        languageCode: String = "en-US",
                         onSaved: @escaping (SavedMemory) -> Void = { _ in }) -> some View {
         modifier(MemoryRecorderModifier(isPresented: isPresented,
                                         question: question,
+                                        languageCode: languageCode,
                                         onSaved: onSaved))
     }
 
     /// Offers back a recording that was interrupted or lost to termination
     /// (KAN-35), then routes Continue / Save through the same save sheet. Add
     /// this once, near the app root or on the main screen.
-    func recordingRecovery(onSaved: @escaping (SavedMemory) -> Void = { _ in }) -> some View {
-        modifier(RecordingRecoveryModifier(onSaved: onSaved))
+    func recordingRecovery(languageCode: String = "en-US",
+                           onSaved: @escaping (SavedMemory) -> Void = { _ in }) -> some View {
+        modifier(RecordingRecoveryModifier(languageCode: languageCode, onSaved: onSaved))
     }
 }
 
@@ -49,6 +52,7 @@ extension View {
 private struct MemoryRecorderModifier: ViewModifier {
     @Binding var isPresented: Bool
     let question: String?
+    let languageCode: String
     let onSaved: (SavedMemory) -> Void
 
     @State private var saving: RecordingDraft?
@@ -74,6 +78,7 @@ private struct MemoryRecorderModifier: ViewModifier {
             .fullScreenCover(item: $saving) { draft in
                 SaveMemoryView(
                     draft: draft,
+                    languageCode: languageCode,
                     onSave: { memory in
                         saving = nil
                         onSaved(memory)
@@ -87,6 +92,7 @@ private struct MemoryRecorderModifier: ViewModifier {
 /// Drives the crash-recovery prompt, the resume-recording cover, and the save
 /// sheet. Each presentation is promoted only after the previous one dismisses.
 private struct RecordingRecoveryModifier: ViewModifier {
+    let languageCode: String
     let onSaved: (SavedMemory) -> Void
 
     @State private var recoverable: RecordingDraft?
@@ -146,6 +152,7 @@ private struct RecordingRecoveryModifier: ViewModifier {
             .fullScreenCover(item: $saving) { draft in
                 SaveMemoryView(
                     draft: draft,
+                    languageCode: languageCode,
                     onSave: { memory in
                         saving = nil
                         onSaved(memory)

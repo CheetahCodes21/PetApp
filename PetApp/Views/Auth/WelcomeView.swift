@@ -18,9 +18,11 @@ struct WelcomeView: View {
             VStack(spacing: Spacing.lg) {
                 Spacer()
 
-                Text("🐤")
-                    .font(.system(size: 96))
-                    .accessibilityHidden(true)
+                Image("AppLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 140, height: 140)
+                    .accessibilityLabel("MemoMe")
 
                 VStack(spacing: Spacing.sm) {
                     Text("MemoMe")

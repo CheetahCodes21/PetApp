@@ -12,9 +12,21 @@ import SwiftData
  
 struct ArchiveView: View {
     @Environment(\.modelContext) private var context
- 
+    @EnvironmentObject private var auth: AuthViewModel
+
     @Query(sort: \Memory.date, order: .reverse)
-    private var allMemories: [Memory]
+    private var everyMemory: [Memory]
+
+    /// Memories belonging to the signed-in user. Matched by the stamped
+    /// `ownerId` (falling back to the companion's owner), and including legacy
+    /// memories that predate owner stamping so a user's history never vanishes.
+    private var allMemories: [Memory] {
+        let uid = auth.userId?.uuidString
+        return everyMemory.filter { memory in
+            if let owner = memory.ownerId { return owner == uid }
+            return memory.companion?.owner?.id == auth.userId || memory.companion == nil
+        }
+    }
  
     @State private var selectedTab: ArchiveTab = .all
     @State private var searchText = ""

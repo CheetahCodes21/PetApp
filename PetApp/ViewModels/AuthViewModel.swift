@@ -183,6 +183,9 @@ final class AuthViewModel: ObservableObject {
         loginPassword = ""
         firstName = ""
         email = ""
+        // Clear the shared widget snapshot so widgets don't keep showing the
+        // signed-out user's pet and stats.
+        WidgetSync.clear()
     }
 
     // MARK: - Account management (edit email / password, delete)

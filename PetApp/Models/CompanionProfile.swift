@@ -47,7 +47,7 @@ struct CompanionProfile: Codable, Equatable {
         case .pet:
             RiveCatView(hearts: 3, isSick: false, color: color)
         case .plant:
-            RivePlantView(isSick: false, color: color)
+            RivePlantView(color: color)
         }
     }
 }

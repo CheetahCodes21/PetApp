@@ -15,6 +15,7 @@ import UIKit
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var auth: AuthViewModel
     @Query private var companions: [Companion]
     @Query private var allMemories: [Memory]
  
@@ -28,13 +29,33 @@ struct HomeView: View {
     /// recorder is only presented once the sheet is fully gone.
     @State private var resolvedQuestion: String?
     @State private var pendingQuestion: String?
- 
+
+    /// Bumped to play the Rive companion's Feed / Talk one-shot animations.
+    @State private var feedToken = 0
+    @State private var talkToken = 0
+
     private let amber = Color(hex: "#F7C873")
     private let amberSoft = Color(hex: "#FBE6BE")
     private let amberText = Color(hex: "#C77A22")
     private let heart = Color(hex: "#E0555F")
  
-    private var companion: Companion? { companions.first }
+    /// The signed-in user's companion. Scoped by owner so a different account
+    /// never sees a previous user's pet (SwiftData is local and not per-user).
+    private var companion: Companion? {
+        companions.first { $0.owner?.id == auth.userId }
+    }
+
+    /// Memories belonging to the signed-in user. Matched by the stamped
+    /// `ownerId`, falling back to the companion's owner, and including legacy
+    /// memories that predate owner stamping (ownerId == nil) so nothing the
+    /// user recorded ever disappears from their history.
+    private var userMemories: [Memory] {
+        let uid = auth.userId?.uuidString
+        return allMemories.filter { memory in
+            if let owner = memory.ownerId { return owner == uid }
+            return memory.companion?.owner?.id == auth.userId || memory.companion == nil
+        }
+    }
  
     var body: some View {
         ZStack {
@@ -76,37 +97,32 @@ struct HomeView: View {
                 onCancel: { showDailyQuestion = false }
             )
         }
-        .memoryRecorder(isPresented: $showRecording, question: resolvedQuestion) { saved in
-            _ = try? saved.persist(in: modelContext, companion: companion)
+        .memoryRecorder(isPresented: $showRecording,
+                        question: resolvedQuestion,
+                        languageCode: settings.language.speechLocaleIdentifier) { saved in
+            persistMemory(saved)
         }
-        .recordingRecovery { saved in
-            _ = try? saved.persist(in: modelContext, companion: companion)
+        .recordingRecovery(languageCode: settings.language.speechLocaleIdentifier) { saved in
+            persistMemory(saved)
         }
-        .task {
-            ensureCompanion()
-            syncWidget()
-        }
+        .task { syncWidget() }
         .onChange(of: companions.count) { _, _ in syncWidget() }
         .onChange(of: allMemories.count) { _, _ in syncWidget() }
     }
- 
-    /// Guarantees there's a companion to show and edit. If onboarding never
-    /// created one on this device (e.g. an existing user just signed in),
-    /// seed a sensible default the user can then edit.
-    private func ensureCompanion() {
-        guard companions.isEmpty else { return }
-        let seeded = Companion(
-            kind: .pet,
-            colorVariant: CompanionColorOption.default.rawValue,
-            name: "My friend",
-            careFrequencyLabel: "Once a week",
-            becomesUnwellIfNotFed: false,
-            vibrateWhenFed: true
-        )
-        modelContext.insert(seeded)
-        try? modelContext.save()
+
+    /// Persists a just-recorded memory, stamped with the current user so it
+    /// shows in Archive. Logs on failure instead of failing silently.
+    private func persistMemory(_ saved: SavedMemory) {
+        do {
+            _ = try saved.persist(in: modelContext,
+                                  companion: companion,
+                                  ownerId: auth.userId?.uuidString)
+            syncWidget()
+        } catch {
+            print("[Memory] Failed to save memory to Archive: \(error.localizedDescription)")
+        }
     }
- 
+
     // MARK: - Header
  
     private var header: some View {
@@ -132,37 +148,38 @@ struct HomeView: View {
  
     private var statCards: some View {
         HStack(spacing: Spacing.md) {
-            statCard(background: AppColor.ninja.opacity(0.14)) {
-                VStack(alignment: .leading, spacing: Spacing.sm) {
-                    Text(moodEmoji)
-                        .font(.title2)
-                        .frame(width: 36, height: 36)
-                        .background(Color.white.opacity(0.7), in: Circle())
-                    Text("Food bar")
-                        .font(.headline)
-                        .foregroundStyle(AppColor.textPrimary)
-                    HStack(spacing: 6) {
-                        ForEach(0..<3, id: \.self) { index in
-                            Image(systemName: "heart.fill")
-                                .foregroundStyle(index < filledHearts ? heart : Color.gray.opacity(0.35))
-                        }
-                    }
-                    .font(.title3)
-                }
-            }
-            .accessibilityLabel("Food bar, \(filledHearts) of 3")
- 
-            statCard(background: amberSoft) {
-                VStack(alignment: .leading, spacing: Spacing.sm) {
-                    icon("flame.fill", tint: amberText, bg: amber.opacity(0.4))
-                    Text("Memory Streak")
-                        .font(.headline)
-                        .foregroundStyle(amberText)
-                    Text("\(streakDays) Days")
-                        .font(.title.weight(.bold))
-                        .foregroundStyle(amberText)
-                }
-            }
+            statCard(background: AppColor.ninja.opacity(0.14),
+                     accent: AppColor.textPrimary,
+                     badgeBackground: .white.opacity(0.85),
+                     title: "Happiness Level",
+                     badge: {
+                         Text(moodEmoji).font(.title3)
+                     },
+                     value: {
+                         HStack(spacing: 6) {
+                             ForEach(0..<3, id: \.self) { index in
+                                 Image(systemName: index < filledHearts ? "heart.fill" : "heart")
+                                     .foregroundStyle(index < filledHearts ? heart : heart.opacity(0.3))
+                             }
+                         }
+                         .font(.body)
+                     })
+            .accessibilityLabel("Happiness level, \(filledHearts) of 3")
+
+            statCard(background: amberSoft,
+                     accent: amberText,
+                     badgeBackground: amber.opacity(0.45),
+                     title: "Memory Streak",
+                     badge: {
+                         Text("❤️‍🔥").font(.body)
+                     },
+                     value: {
+                         HStack(alignment: .firstTextBaseline, spacing: 3) {
+                             Text("\(streakDays)").font(.title3.weight(.bold))
+                             Text(streakDays == 1 ? "Day" : "Days").font(.subheadline.weight(.semibold))
+                         }
+                         .foregroundStyle(amberText)
+                     })
             .accessibilityLabel("Memory streak, \(streakDays) days")
         }
     }
@@ -170,7 +187,7 @@ struct HomeView: View {
     /// Food-bar hearts, derived from how long since the companion was cared for.
     private var filledHearts: Int { companion?.hungerHearts ?? 3 }
 
-    /// Face reflecting the food bar: 3 hearts happy, 2 neutral, 1 sad.
+    /// Face reflecting the happiness level: 3 hearts happy, 2 neutral, 1 sad.
     private var moodEmoji: String {
         switch filledHearts {
         case 3:  return "😊"
@@ -185,7 +202,7 @@ struct HomeView: View {
     /// Streak = consecutive days (ending today) that have at least one memory.
     private var streakDays: Int {
         let calendar = Calendar.current
-        let days = Set(allMemories.filter { !$0.isDeleted }.map { calendar.startOfDay(for: $0.date) })
+        let days = Set(userMemories.filter { !$0.isDeleted }.map { calendar.startOfDay(for: $0.date) })
         guard !days.isEmpty else { return 0 }
         var streak = 0
         var day = calendar.startOfDay(for: Date())
@@ -197,21 +214,40 @@ struct HomeView: View {
         return streak
     }
  
-    private func statCard<Content: View>(background: Color,
-                                         @ViewBuilder _ content: () -> Content) -> some View {
-        content()
-            .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
-            .padding(Spacing.md)
-            .background(background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    /// A home stat card: a badge in a circle, a title, then a value row pinned
+    /// to the bottom. The `Spacer` bottom-aligns the value across both cards, so
+    /// the two cards stay visually symmetric regardless of value height.
+    private func statCard<Badge: View, Value: View>(
+        background: Color,
+        accent: Color,
+        badgeBackground: Color,
+        title: String,
+        @ViewBuilder badge: () -> Badge,
+        @ViewBuilder value: () -> Value
+    ) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            HStack(spacing: Spacing.xs) {
+                badge()
+                    .frame(width: 30, height: 30)
+                    .background(badgeBackground, in: Circle())
+                Text(LocalizedStringKey(title))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(accent)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            Spacer(minLength: Spacing.xs)
+            value()
+        }
+        .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
+        .padding(Spacing.sm)
+        .background(background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(accent.opacity(0.12), lineWidth: 1)
+        )
     }
  
-    private func icon(_ system: String, tint: Color, bg: Color? = nil) -> some View {
-        Image(systemName: system)
-            .font(.headline)
-            .foregroundStyle(tint)
-            .frame(width: 36, height: 36)
-            .background((bg ?? Color.white.opacity(0.7)), in: Circle())
-    }
  
     // MARK: - Companion display
  
@@ -271,16 +307,10 @@ struct HomeView: View {
                 let plant = PlantSpecies(rawValue: companion.plantSpeciesRaw) ?? .default
                 if plant.isAnimated {
                     RivePlantView(hearts: companion.hungerHearts,
-                                  isSick: companion.isSick,
                                   color: companionColor,
-                                  feedToken: feedToken,
-                                  talkToken: talkToken)
+                                  feedToken: feedToken)
                         .frame(width: 300, height: 300)
                         .clipped()
-                        .contentShape(Rectangle())
-                        .onTapGesture { talkToken += 1 }
-                        .accessibilityAddTraits(.isButton)
-                        .accessibilityLabel("Tap \(companion.name) to say hi")
                 } else {
                     LottieView(name: plant.lottieName)
                         .frame(width: 220, height: 220)
@@ -357,7 +387,7 @@ struct HomeView: View {
     }
  
     private func syncWidget() {
-        WidgetSync.update(companion: companion, name: settings.name, memories: allMemories)
+        WidgetSync.update(companion: companion, name: settings.name, memories: userMemories)
     }
  
     // MARK: - Record

@@ -24,8 +24,8 @@ struct PrivacyDisclosureView: View {
                         .font(.largeTitle.weight(.bold))
                         .foregroundStyle(AppColor.textPrimary)
 
-                    point("On your device",
-                          "Your voice is turned into text right here on your iPhone. The audio is not sent to a server to do this.")
+                    point("Turned into text",
+                          "Your voice is turned into text right on your iPhone whenever it can be. If your device can't do that for your language, the audio is sent securely to Apple's speech service to create the text — and nowhere else.")
                     point("Kept safe",
                           "Your recordings and their words are stored encrypted on your device.")
                     point("Yours to keep or remove",

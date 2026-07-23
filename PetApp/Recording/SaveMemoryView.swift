@@ -19,6 +19,8 @@ import UIKit
 final class SaveMemoryModel: ObservableObject {
     let draft: RecordingDraft
     private let memoryID = UUID().uuidString
+    /// BCP-47 language the recording is transcribed in (the app's language).
+    private let languageCode: String
 
     @Published var title = ""
     @Published var date: Date
@@ -28,6 +30,12 @@ final class SaveMemoryModel: ObservableObject {
     /// Simulator, or no on-device dictation model). Distinct from a transient
     /// failure so we can show a calm note instead of an error + retry.
     @Published private(set) var transcriptUnavailable = false
+    /// True when transcription failed because Dictation is turned off on the
+    /// device — the user can fix it in Settings, then retry.
+    @Published private(set) var dictationDisabled = false
+    /// Human-readable status of the last transcription attempt, shown on screen
+    /// to make failures visible while we diagnose (temporary).
+    @Published var debugDetail: String?
     @Published private(set) var isPreparing = true
     @Published var errorMessage: String?
 
@@ -42,10 +50,11 @@ final class SaveMemoryModel: ObservableObject {
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
 
-    init(draft: RecordingDraft) {
+    init(draft: RecordingDraft, languageCode: String = "en-US") {
         self.draft = draft
         self.date = draft.createdAt
         self.duration = draft.duration
+        self.languageCode = languageCode
     }
 
     /// A title suggestion prefilled when the user leaves the field empty.
@@ -80,17 +89,41 @@ final class SaveMemoryModel: ObservableObject {
     }
 
     private func runTranscription() async {
-        guard let url = assembledURL else { transcriptState = .none; return }
+        guard let url = assembledURL else {
+            print("[Transcription] No assembled audio URL — nothing to transcribe.")
+            debugDetail = "No audio file was produced from the recording."
+            transcriptState = .failed
+            return
+        }
+        debugDetail = "Transcribing \(languageCode)…"
         transcriptState = .pending
         transcriptUnavailable = false
+        dictationDisabled = false
         do {
-            transcript = try await TranscriptionService.transcribe(url: url)
+            transcript = try await TranscriptionService.transcribe(url: url, languageCode: languageCode)
+            debugDetail = "Got \(transcript.count) characters."
             transcriptState = .ready
+        } catch TranscriptionService.TranscriptionError.notAuthorized {
+            print("[Transcription] Not authorized for speech recognition.")
+            debugDetail = "Speech Recognition permission is off. Turn it on in Settings › Privacy › Speech Recognition."
+            transcriptState = .failed
         } catch TranscriptionService.TranscriptionError.unavailable {
-            // Can't transcribe privately on this device — not a retryable error.
+            // No recognizer at all for this language — retrying won't help.
+            print("[Transcription] Unavailable: no recognizer for \(languageCode).")
+            debugDetail = "No speech recognizer available for \(languageCode)."
             transcriptUnavailable = true
             transcriptState = .failed
         } catch {
+            print("[Transcription] Failed: \(error.localizedDescription)")
+            let ns = error as NSError
+            // "Siri and Dictation are disabled" (kAFAssistantErrorDomain 1101):
+            // SFSpeechRecognizer needs Dictation enabled on the device.
+            if ns.code == 1101 || error.localizedDescription.localizedCaseInsensitiveContains("dictation") {
+                debugDetail = "Turn on Dictation to transcribe: Settings › General › Keyboard › Enable Dictation."
+                dictationDisabled = true
+            } else {
+                debugDetail = "Error: \(error.localizedDescription)"
+            }
             transcriptState = .failed
         }
     }
@@ -230,9 +263,10 @@ struct SaveMemoryView: View {
     @State private var showSavedConfirmation = false
 
     init(draft: RecordingDraft,
+         languageCode: String = "en-US",
          onSave: @escaping (SavedMemory) -> Void,
          onCancel: @escaping () -> Void) {
-        _model = StateObject(wrappedValue: SaveMemoryModel(draft: draft))
+        _model = StateObject(wrappedValue: SaveMemoryModel(draft: draft, languageCode: languageCode))
         self.onSave = onSave
         self.onCancel = onCancel
     }
@@ -366,6 +400,11 @@ struct SaveMemoryView: View {
     private var transcriptSection: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             Text("What you said").font(.headline).foregroundStyle(AppColor.textPrimary)
+            if let detail = model.debugDetail {
+                Text("Transcription status: \(detail)")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $model.transcript)
                     .font(.body)
@@ -382,10 +421,34 @@ struct SaveMemoryView: View {
                             .foregroundStyle(AppColor.textSecondary)
                     }
                     .padding(Spacing.md)
+                } else if model.transcriptState == .ready && model.transcript.isEmpty {
+                    Text("We couldn't make out any words — you can type here.")
+                        .font(.body)
+                        .foregroundStyle(AppColor.textSecondary.opacity(0.7))
+                        .padding(Spacing.md)
+                        .allowsHitTesting(false)
                 }
             }
             if model.transcriptState == .failed {
-                if model.transcriptUnavailable {
+                if model.dictationDisabled {
+                    // Speech recognition needs Dictation enabled on the device.
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text("To write your words out automatically, turn on Dictation: Settings › General › Keyboard › Enable Dictation.")
+                            .font(.callout)
+                            .foregroundStyle(AppColor.textSecondary)
+                        HStack(spacing: Spacing.md) {
+                            Button("Open Settings") {
+                                if let url = URL(string: UIApplication.openSettingsURLString) {
+                                    UIApplication.shared.open(url)
+                                }
+                            }
+                            .foregroundStyle(AppColor.ninja)
+                            Button("Try again") { model.retryTranscription() }
+                                .foregroundStyle(AppColor.ninja)
+                        }
+                        .font(.callout.weight(.semibold))
+                    }
+                } else if model.transcriptUnavailable {
                     // On-device transcription isn't possible here; retrying won't
                     // help, so guide the user to type it themselves instead.
                     Text("Writing your words out isn't available on this device. Your recording is saved — you can type here if you'd like.")
