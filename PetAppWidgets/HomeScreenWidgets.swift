@@ -27,11 +27,6 @@ private var lavenderBackground: some View {
                    startPoint: .topLeading, endPoint: .bottomTrailing)
 }
 
-private var plumBackground: some View {
-    LinearGradient(colors: [Color.wBlackberry, Color(hex: "#2C1838")],
-                   startPoint: .topLeading, endPoint: .bottomTrailing)
-}
-
 /// Loads the companion image the app wrote into the shared App Group container,
 /// if one exists (static animals only — the cat/plants have no static image).
 private func companionUIImage() -> UIImage? {
@@ -87,6 +82,46 @@ private struct HeartsRow: View {
                     .foregroundStyle(i < filled ? Color.wHeart : Color.wHeart.opacity(0.3))
             }
         }
+    }
+}
+
+/// A rounded speech-bubble shape with a small tail pointing left, toward
+/// whatever avatar sits beside it (used to make the daily question read as
+/// something the companion is "saying").
+private struct SpeechBubbleShape: Shape {
+    var cornerRadius: CGFloat = 14
+    var tailSize: CGFloat = 8
+
+    func path(in rect: CGRect) -> Path {
+        let bubbleRect = CGRect(x: rect.minX + tailSize, y: rect.minY,
+                                 width: rect.width - tailSize, height: rect.height)
+        var path = Path(roundedRect: bubbleRect, cornerRadius: cornerRadius)
+
+        let tailY = bubbleRect.minY + min(cornerRadius + tailSize, bubbleRect.height / 2)
+        path.move(to: CGPoint(x: bubbleRect.minX, y: tailY - tailSize))
+        path.addLine(to: CGPoint(x: bubbleRect.minX - tailSize, y: tailY))
+        path.addLine(to: CGPoint(x: bubbleRect.minX, y: tailY + tailSize))
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct SpeechBubble: View {
+    let text: String
+    var fill: Color = .white
+    var textColor: Color = .wBlackberry
+
+    var body: some View {
+        Text(text)
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(textColor)
+            .lineLimit(2)
+            .minimumScaleFactor(0.85)
+            .padding(.vertical, 7)
+            .padding(.leading, 8 + 8)   // tailSize + normal inset
+            .padding(.trailing, 8)
+            .fixedSize(horizontal: false, vertical: true)
+            .background(SpeechBubbleShape().fill(fill))
     }
 }
 
@@ -197,7 +232,7 @@ struct QuestionReadyWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: PetTimelineProvider()) { entry in
             QuestionReadyView(entry: entry)
-                .containerBackground(for: .widget) { plumBackground }
+                .containerBackground(for: .widget) { lavenderBackground }
         }
         .configurationDisplayName("Today's Question")
         .description("Shows today's memory question and how your companion is doing.")
@@ -210,39 +245,52 @@ private struct QuestionReadyView: View {
     private var d: PetWidgetData { entry.data }
 
     var body: some View {
-        HStack(spacing: 14) {
-            CompanionAvatar(data: d, size: 58, onDark: true)
+        if d.isSignedOut {
+            emptyState
+        } else {
+            HStack(spacing: 14) {
+                CompanionAvatar(data: d, size: 78, onDark: false)
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Today's question")
-                    .font(.caption2.weight(.bold))
-                    .textCase(.uppercase)
-                    .foregroundStyle(Color.wThistle)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Today's question is ready")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.wNinja)
+                        .lineLimit(1)
 
-                Text(d.todaysQuestion)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.85)
+                    SpeechBubble(text: d.todaysQuestion)
 
-                Spacer(minLength: 2)
+                    HeartsRow(filled: d.moodHearts ?? 3)
 
-                HStack(spacing: 8) {
-                    HStack(spacing: 3) {
-                        ForEach(0..<5, id: \.self) { index in
-                            Image(systemName: "heart.fill")
-                                .font(.caption2)
-                                .foregroundStyle(index < d.hungerLevel ? Color.wHeart : .white.opacity(0.22))
-                        }
+                    Spacer(minLength: 2)
+
+                    HStack(spacing: 12) {
+                        stat(icon: "flame.fill", value: "\(d.dayStreak)", label: "streak", tint: .wAmber)
+                        stat(icon: "heart.fill", value: "\(d.memoriesSavedTotal)", label: "memories", tint: .wHeart)
                     }
-                    Spacer()
-                    Label("\(d.dayStreak)", systemImage: "flame.fill")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.wAmber)
                 }
+                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
-        .padding(4)
+    }
+
+    private func stat(icon: String, value: String, label: String, tint: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon).font(.caption2).foregroundStyle(tint)
+            Text(value).font(.subheadline.weight(.bold)).foregroundStyle(Color.wBlackberry)
+            Text(label).font(.caption2).foregroundStyle(Color.wNinja)
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Text("🐾").font(.system(size: 44))
+            Text("Open MemoMe to meet your companion")
+                .font(.caption.weight(.medium))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Color.wNinja)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

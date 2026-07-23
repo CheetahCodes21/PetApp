@@ -70,6 +70,26 @@ struct PetWidgetData: Codable {
         memoriesGoalThisMonth: 20,
         isPlant: false
     )
+
+    /// Shown when there's no real data yet — signed out, brand-new account,
+    /// or nothing has ever been synced. Widgets use this to show a gentle
+    /// "open the app" prompt instead of stale or fabricated stats.
+    static let empty = PetWidgetData(
+        companionAssetName: "",
+        userFirstName: "friend",
+        todaysQuestion: "Open MemoMe to get started",
+        isHungry: false,
+        hungerLevel: 0,
+        dayStreak: 0,
+        memoriesSavedTotal: 0,
+        memoriesThisMonth: 0,
+        memoriesGoalThisMonth: 20,
+        isPlant: false,
+        companionName: nil,
+        moodHearts: nil,
+        companionKind: nil,
+        hasCompanion: false
+    )
 }
 
 /// Read/write access to the shared snapshot.
