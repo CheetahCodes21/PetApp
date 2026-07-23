@@ -16,4 +16,7 @@ struct FeedActivityAttributes: ActivityAttributes {
         var hungerLevel: Int
     }
     var companionAssetName: String
+    /// True when the growth object is a plant rather than a pet — swaps
+    /// "Feed me!" / "Feed" copy for "I need care!" / "Care" throughout.
+    var isPlant: Bool = false
 }

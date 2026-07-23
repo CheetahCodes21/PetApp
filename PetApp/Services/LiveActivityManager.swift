@@ -15,11 +15,11 @@ import WidgetKit
 enum LiveActivityManager {
 
     /// Call this when the pet becomes hungry (e.g. from your feeding-schedule logic).
-    static func start(companionAssetName: String, hungerLevel: Int) {
+    static func start(companionAssetName: String, hungerLevel: Int, isPlant: Bool = false) {
         // Only one Feed activity should run at a time.
         guard Activity<FeedActivityAttributes>.activities.isEmpty else { return }
 
-        let attributes = FeedActivityAttributes(companionAssetName: companionAssetName)
+        let attributes = FeedActivityAttributes(companionAssetName: companionAssetName, isPlant: isPlant)
         let state = FeedActivityAttributes.ContentState(isHungry: true, hungerLevel: hungerLevel)
 
         do {
@@ -37,6 +37,28 @@ enum LiveActivityManager {
         data.hungerLevel = hungerLevel
         PetWidgetStore.save(data)
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// Called from WidgetSync whenever the real companion's hunger state
+    /// changes, so the Live Activity always reflects what's actually true —
+    /// starts one if the companion just became hungry, updates it if the
+    /// hunger level changed, or ends it once no longer hungry.
+    static func sync(companionAssetName: String, isHungry: Bool, hungerLevel: Int, isPlant: Bool) async {
+        let running = Activity<FeedActivityAttributes>.activities.first
+
+        if isHungry {
+            if let running {
+                let state = FeedActivityAttributes.ContentState(isHungry: true, hungerLevel: hungerLevel)
+                await running.update(ActivityContent(state: state, staleDate: nil))
+            } else {
+                start(companionAssetName: companionAssetName, hungerLevel: hungerLevel, isPlant: isPlant)
+            }
+        } else if let running {
+            let state = FeedActivityAttributes.ContentState(isHungry: false, hungerLevel: hungerLevel)
+            await running.update(ActivityContent(state: state, staleDate: nil))
+            try? await Task.sleep(for: .seconds(3))
+            await running.end(nil, dismissalPolicy: .default)
+        }
     }
 
     /// Shared by: the in-app Feed button, and as a fallback if the Live
