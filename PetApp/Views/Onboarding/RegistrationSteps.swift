@@ -21,8 +21,6 @@ struct GetStartedStep: View {
     @State private var password = ""
     @State private var confirmPassword = ""
  
-    private let passwordRegex =
-    "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-={}\\[\\]|:;\"'<>,.?/~`]).{8,}$"
     @State private var working = false
     @State private var error: String?
  
@@ -190,8 +188,7 @@ struct GetStartedStep: View {
     }
  
     private var isValidPassword: Bool {
-        NSPredicate(format: "SELF MATCHES %@", passwordRegex)
-            .evaluate(with: password)
+        PasswordPolicy.isValid(password)
     }
  
     private var canSubmit: Bool {
@@ -219,16 +216,16 @@ struct PermissionsStep: View {
     @ObservedObject var permissions: PermissionsManager
     let onBack: () -> Void
     let onNext: () -> Void
-
+ 
     @State private var requesting = false
     /// Drives the staggered entrance + header pulse.
     @State private var appeared = false
     @State private var pulse = false
-
+ 
     private var allGranted: Bool {
         AppPermission.allCases.allSatisfy { permissions.state(for: $0) == .granted }
     }
-
+ 
     /// Distinct accent per permission so the cards feel lively.
     private func tint(_ permission: AppPermission) -> Color {
         switch permission {
@@ -238,7 +235,7 @@ struct PermissionsStep: View {
         case .notifications: return Color(hex: "#F2A65A")
         }
     }
-
+ 
     var body: some View {
         StepScaffold(title: "A few permissions",
                      subtitle: "MemoMe only asks for what it needs to help you.",
@@ -247,7 +244,7 @@ struct PermissionsStep: View {
                      onPrimary: onNext) {
             VStack(spacing: Spacing.md) {
                 header
-
+ 
                 ForEach(Array(AppPermission.allCases.enumerated()), id: \.element) { index, permission in
                     row(permission)
                         .opacity(appeared ? 1 : 0)
@@ -255,7 +252,7 @@ struct PermissionsStep: View {
                         .animation(.spring(response: 0.5, dampingFraction: 0.8)
                             .delay(0.08 * Double(index) + 0.15), value: appeared)
                 }
-
+ 
                 allowButton
                     .padding(.top, Spacing.xs)
             }
@@ -267,9 +264,9 @@ struct PermissionsStep: View {
             }
         }
     }
-
+ 
     // MARK: Header — pulsing privacy badge
-
+ 
     private var header: some View {
         ZStack {
             Circle()
@@ -279,18 +276,18 @@ struct PermissionsStep: View {
                 )
                 .frame(width: 150, height: 150)
                 .scaleEffect(pulse ? 1.12 : 0.9)
-
+ 
             Circle()
                 .stroke(AppColor.ninja.opacity(0.25), lineWidth: 1.5)
                 .frame(width: pulse ? 108 : 88, height: pulse ? 108 : 88)
                 .opacity(pulse ? 0 : 0.9)
-
+ 
             Circle()
                 .fill(LinearGradient(colors: [AppColor.ninja, AppColor.blackberry],
                                      startPoint: .topLeading, endPoint: .bottomTrailing))
                 .frame(width: 76, height: 76)
                 .shadow(color: AppColor.blackberry.opacity(0.3), radius: 12, y: 6)
-
+ 
             Image(systemName: allGranted ? "checkmark.shield.fill" : "hand.raised.fill")
                 .font(.system(size: 32, weight: .semibold))
                 .foregroundStyle(.white)
@@ -299,9 +296,9 @@ struct PermissionsStep: View {
         .frame(height: 150)
         .accessibilityHidden(true)
     }
-
+ 
     // MARK: Permission card
-
+ 
     private func row(_ permission: AppPermission) -> some View {
         let state = permissions.state(for: permission)
         let accent = tint(permission)
@@ -316,7 +313,7 @@ struct PermissionsStep: View {
                     in: RoundedRectangle(cornerRadius: 14, style: .continuous)
                 )
                 .shadow(color: accent.opacity(0.35), radius: 6, y: 3)
-
+ 
             VStack(alignment: .leading, spacing: 2) {
                 Text(LocalizedStringKey(permission.title))
                     .font(.headline)
@@ -326,9 +323,9 @@ struct PermissionsStep: View {
                     .foregroundStyle(AppColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-
+ 
             Spacer(minLength: Spacing.xs)
-
+ 
             statusIcon(state)
         }
         .padding(Spacing.md)
@@ -342,7 +339,7 @@ struct PermissionsStep: View {
         .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
         .animation(.spring(response: 0.4, dampingFraction: 0.7), value: state)
     }
-
+ 
     @ViewBuilder
     private func statusIcon(_ state: PermissionState) -> some View {
         switch state {
@@ -363,9 +360,9 @@ struct PermissionsStep: View {
                 .frame(width: 22, height: 22)
         }
     }
-
+ 
     // MARK: Allow button
-
+ 
     private var allowButton: some View {
         Button {
             Task {
@@ -754,4 +751,3 @@ private struct LanguageMenu: View {
         }
     }
 }
- 

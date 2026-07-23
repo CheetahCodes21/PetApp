@@ -24,37 +24,54 @@
 //  create policy "app_users demo access" on public.app_users
 //    for all to anon using (true) with check (true);
 //
-
+ 
 import SwiftUI
 import Combine
 import Supabase
-
+ 
+/// The one password strength rule for the app. Sign-up (RegistrationSteps)
+/// and changing your password from Settings both enforce this — previously
+/// Settings only required 6 characters, letting someone weaken their
+/// password below what sign-up would ever have allowed.
+enum PasswordPolicy {
+    static let regex =
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-={}\\[\\]|:;\"'<>,.?/~`]).{8,}$"
+ 
+    /// Shown next to password fields and in error messages.
+    static let requirementsSummary =
+        "At least 8 characters, with an uppercase letter, a lowercase letter, a number, and a special character."
+ 
+    static func isValid(_ password: String) -> Bool {
+        NSPredicate(format: "SELF MATCHES %@", regex).evaluate(with: password)
+    }
+}
+ 
 @MainActor
 final class AuthViewModel: ObservableObject {
-
+ 
     // MARK: - Published state
-
+ 
     /// Drives whether the app shows the home screen.
     @Published var isAuthenticated = false
     @Published private(set) var firstName: String = ""
     @Published private(set) var email: String = ""
     @Published private(set) var userId: UUID?
-
+ 
     // Sign-in form (existing users)
     @Published var loginIdentifier = ""
     @Published var loginPassword = ""
     @Published var isWorking = false
     @Published var errorMessage: String?
-
+ 
     /// Must be a fresh builder per query: `PostgrestQueryBuilder` is a class
     /// and each `.select`/`.insert`/`.eq` mutates it in place, so a stored
     /// instance would accumulate filters from every earlier request and
     /// silently match zero rows.
     private var table: PostgrestQueryBuilder { SupabaseManager.client.from("app_users") }
-
+ 
     private let defaults = UserDefaults.standard
     private let cacheKey = "auth.cachedUser"
-
+ 
     /// What we persist locally so a returning user is remembered "forever"
     /// (until sign-out) without needing a real session/token.
     private struct CachedUser: Codable {
@@ -62,18 +79,18 @@ final class AuthViewModel: ObservableObject {
         let email: String?
         let fullName: String?
     }
-
+ 
     init() {
         restoreCurrentSession()
     }
-
+ 
     var canSubmitSignIn: Bool {
         !loginIdentifier.trimmingCharacters(in: .whitespaces).isEmpty
             && loginPassword.count >= 6
     }
-
+ 
     // MARK: - Email sign in (existing users)
-
+ 
     func signIn() {
         guard SupabaseConfig.isConfigured else {
             errorMessage = notConfiguredMessage
@@ -101,22 +118,22 @@ final class AuthViewModel: ObservableObject {
             }
         }
     }
-
+ 
     // MARK: - Email sign up (new users, from registration)
-
+ 
     /// Creates the account row. Throws on failure so the caller can stay on the step.
     func signUpWithEmail(email: String, password: String, fullName: String) async throws {
         guard SupabaseConfig.isConfigured else { throw AuthError.notConfigured }
-
+ 
         let normalizedEmail = email.trimmingCharacters(in: .whitespaces).lowercased()
-
+ 
         let existing: [AppUserRecord] = try await table
             .select("id")
             .eq("email", value: normalizedEmail)
             .execute()
             .value
         guard existing.isEmpty else { throw AuthError.emailTaken }
-
+ 
         let newRecord = NewAppUser(email: normalizedEmail,
                                     password: password,
                                     fullName: fullName.isEmpty ? nil : fullName)
@@ -129,21 +146,21 @@ final class AuthViewModel: ObservableObject {
         apply(inserted)
         // Note: we do NOT set isAuthenticated here — onboarding continues.
     }
-
+ 
     // MARK: - Sign in with Apple
-
+ 
     func signInWithApple(_ credential: AppleCredential) async throws {
         guard SupabaseConfig.isConfigured else { throw AuthError.notConfigured }
         guard let sub = AppleIdentityToken.subject(from: credential.idToken) else {
             throw AppleSignInError.missingIdentityToken
         }
-
+ 
         let existing: [AppUserRecord] = try await table
             .select("id, email, full_name, apple_sub")
             .eq("apple_sub", value: sub)
             .execute()
             .value
-
+ 
         if let record = existing.first {
             apply(record)
         } else {
@@ -160,21 +177,21 @@ final class AuthViewModel: ObservableObject {
             apply(inserted)
         }
     }
-
+ 
     // MARK: - Flow control
-
+ 
     /// Enters the app (used after Apple sign-in from the login screen).
     func enterApp() {
         isAuthenticated = true
     }
-
+ 
     /// Finishes the multi-step registration flow and enters the app.
     func finishOnboarding(name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         if !trimmed.isEmpty { firstName = trimmed }
         isAuthenticated = true
     }
-
+ 
     func signOut() {
         defaults.removeObject(forKey: cacheKey)
         userId = nil
@@ -187,9 +204,9 @@ final class AuthViewModel: ObservableObject {
         // signed-out user's pet and stats.
         WidgetSync.clear()
     }
-
+ 
     // MARK: - Account management (edit email / password, delete)
-
+ 
     func updateEmail(to newEmail: String) async throws {
         guard let userId else { throw AuthError.notSignedIn }
         let normalized = newEmail.trimmingCharacters(in: .whitespaces).lowercased()
@@ -198,19 +215,19 @@ final class AuthViewModel: ObservableObject {
         email = normalized
         cacheCurrentUser()
     }
-
+ 
     func updatePassword(to newPassword: String) async throws {
         guard let userId else { throw AuthError.notSignedIn }
-        guard newPassword.count >= 6 else { throw AuthError.weakPassword }
+        guard PasswordPolicy.isValid(newPassword) else { throw AuthError.weakPassword }
         try await table.update(["password": newPassword]).eq("id", value: userId.uuidString).execute()
     }
-
+ 
     func deleteAccount() async throws {
         guard let userId else { throw AuthError.notSignedIn }
         try await table.delete().eq("id", value: userId.uuidString).execute()
         signOut()
     }
-
+ 
     private func cacheCurrentUser() {
         guard let userId else { return }
         let cached = CachedUser(id: userId,
@@ -220,9 +237,9 @@ final class AuthViewModel: ObservableObject {
             defaults.set(data, forKey: cacheKey)
         }
     }
-
+ 
     // MARK: - Session restore
-
+ 
     /// Restores the cached account synchronously on launch so a signed-in
     /// user goes straight to home with no flash of the welcome screen, then
     /// confirms in the background that the row still exists.
@@ -230,12 +247,12 @@ final class AuthViewModel: ObservableObject {
         guard let data = defaults.data(forKey: cacheKey),
               let cached = try? JSONDecoder().decode(CachedUser.self, from: data)
         else { return }
-
+ 
         userId = cached.id
         email = cached.email ?? ""
         firstName = cached.fullName ?? ""
         isAuthenticated = true
-
+ 
         Task {
             do {
                 let record: AppUserRecord = try await table
@@ -252,25 +269,25 @@ final class AuthViewModel: ObservableObject {
             }
         }
     }
-
+ 
     private func apply(_ record: AppUserRecord) {
         userId = record.id
         if let name = record.fullName, !name.isEmpty { firstName = name }
         email = record.email ?? email
-
+ 
         let cached = CachedUser(id: record.id, email: record.email, fullName: record.fullName)
         if let data = try? JSONEncoder().encode(cached) {
             defaults.set(data, forKey: cacheKey)
         }
     }
-
+ 
     // MARK: - Helpers
-
+ 
     private var notConfiguredMessage: String {
         "Sign-in isn't set up yet. Add your Supabase key in SupabaseConfig.swift."
     }
 }
-
+ 
 /// Errors surfaced by the demo table-based auth.
 enum AuthError: LocalizedError {
     case notConfigured
@@ -278,7 +295,7 @@ enum AuthError: LocalizedError {
     case notSignedIn
     case invalidEmail
     case weakPassword
-
+ 
     var errorDescription: String? {
         switch self {
         case .notConfigured:
@@ -290,7 +307,7 @@ enum AuthError: LocalizedError {
         case .invalidEmail:
             return "Please enter a valid email address."
         case .weakPassword:
-            return "Password must be at least 6 characters."
+            return "Password must contain: \(PasswordPolicy.requirementsSummary)"
         }
     }
 }

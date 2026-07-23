@@ -164,7 +164,7 @@ struct HomeView: View {
                          }
                          .font(.body)
                      })
-            .accessibilityLabel("Happiness level, \(filledHearts) of 3")
+            .accessibilityLabel("Happiness, \(filledHearts) of 3")
 
             statCard(background: amberSoft,
                      accent: amberText,
