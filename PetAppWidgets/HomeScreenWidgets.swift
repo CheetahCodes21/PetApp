@@ -28,11 +28,18 @@ private var lavenderBackground: some View {
 }
  
 /// Loads the companion image the app wrote into the shared App Group container,
-/// if one exists (static animals only — the cat/plants have no static image).
+/// if one exists (the real static artwork — dog/cow/rabbit/goldfish).
 private func companionUIImage() -> UIImage? {
     guard let container = FileManager.default
         .containerURL(forSecurityApplicationGroupIdentifier: AppGroup.id) else { return nil }
     return UIImage(contentsOfFile: container.appendingPathComponent("companion.png").path)
+}
+ 
+/// The companion's chosen recolour, matching the app's colour picker
+/// (CompanionColorOption) — defaults to purple, same as in-app.
+private func companionColor(_ data: PetWidgetData) -> Color {
+    guard let hex = data.companionColorHex else { return Color(hex: "#6B4E9E") }
+    return Color(hex: hex)
 }
  
 /// A time-of-day greeting.
@@ -58,9 +65,22 @@ private struct CompanionAvatar: View {
             Circle()
                 .fill(onDark ? Color.white.opacity(0.16) : Color.wNinja.opacity(0.14))
             if let ui = companionUIImage(), !data.companionAssetName.isEmpty {
+                // Real static artwork (dog, cow, rabbit, goldfish) — already
+                // rendered in its fixed colour, no tinting needed.
                 Image(uiImage: ui)
                     .resizable().scaledToFit()
                     .padding(size * 0.14)
+            } else if data.companionKind != nil {
+                // Animated companions (the Rive cat, or any plant) have no
+                // exported photo, but do have a still "idle" template image
+                // bundled with the widget — recolour it to match what the
+                // user picked in the app.
+                Image(data.companionKind == "plant" ? "Plant idle" : "Cat Idle")
+                    .resizable()
+                    .renderingMode(.template)
+                    .scaledToFit()
+                    .padding(size * 0.14)
+                    .foregroundStyle(companionColor(data))
             } else {
                 Text(data.moodEmoji)
                     .font(.system(size: size * 0.5))

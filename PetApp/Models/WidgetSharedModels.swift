@@ -12,13 +12,13 @@
 //  2. Create/select the same group id on both, e.g. "group.com.yourteam.petapp",
 //     and update AppGroup.id below to match.
 //
-
+ 
 import Foundation
-
+ 
 enum AppGroup {
     static let id = "group.com.yourteam.petapp"
 }
-
+ 
 /// Snapshot of everything the widgets/Live Activity need to render.
 struct PetWidgetData: Codable {
     var companionAssetName: String
@@ -31,10 +31,10 @@ struct PetWidgetData: Codable {
     var memoriesThisMonth: Int
     var memoriesGoalThisMonth: Int
     /// True when the growth object is a plant rather than a pet. Plants have
-    /// no static widget image (only a Lottie animation), so widgets fall
-    /// back to a system leaf icon when this is true.
+    /// no static widget image of their own real artwork (only a Lottie
+    /// animation in-app), so the widget shows recoloured template art instead.
     var isPlant: Bool = false
-
+ 
     // Added fields (optional for back-compat with older saved snapshots).
     /// The companion's given name (e.g. "Bruno").
     var companionName: String?
@@ -42,10 +42,14 @@ struct PetWidgetData: Codable {
     var moodHearts: Int?
     /// "pet" or "plant" — chooses the fallback glyph when there's no image.
     var companionKind: String?
+    /// Hex colour of the user's chosen companion recolour (e.g. "#6B4E9E"),
+    /// used to tint the widget's static cat/plant template art so it matches
+    /// what's shown in the app. Nil falls back to the default purple.
+    var companionColorHex: String?
     /// False once the user has signed out / has no companion, so widgets show a
     /// gentle "open the app" prompt instead of stale or sample stats.
     var hasCompanion: Bool?
-
+ 
     /// Face reflecting happiness: 3 hearts happy, 2 neutral, 1 sad.
     var moodEmoji: String {
         switch moodHearts ?? 3 {
@@ -54,9 +58,9 @@ struct PetWidgetData: Codable {
         default: return "😢"
         }
     }
-
+ 
     var isSignedOut: Bool { hasCompanion == false }
-
+ 
     /// Sample data shown in the widget gallery / previews only.
     static let placeholder = PetWidgetData(
         companionAssetName: "chick",
@@ -70,7 +74,7 @@ struct PetWidgetData: Codable {
         memoriesGoalThisMonth: 20,
         isPlant: false
     )
-
+ 
     /// Shown when there's no real data yet — signed out, brand-new account,
     /// or nothing has ever been synced. Widgets use this to show a gentle
     /// "open the app" prompt instead of stale or fabricated stats.
@@ -91,33 +95,33 @@ struct PetWidgetData: Codable {
         hasCompanion: false
     )
 }
-
+ 
 /// Read/write access to the shared snapshot.
 enum PetWidgetStore {
     private static let key = "petWidgetData"
-
+ 
     static var defaults: UserDefaults {
         UserDefaults(suiteName: AppGroup.id) ?? .standard
     }
-
+ 
     static func load() -> PetWidgetData {
         guard let data = defaults.data(forKey: key),
               let decoded = try? JSONDecoder().decode(PetWidgetData.self, from: data)
         else { return .empty }   // no real data yet → gentle prompt, not fake stats
         return decoded
     }
-
+ 
     static func save(_ value: PetWidgetData) {
         guard let data = try? JSONEncoder().encode(value) else { return }
         defaults.set(data, forKey: key)
     }
-
+ 
     /// Clears the shared widget data (e.g. on sign-out) so the widget doesn't
     /// keep showing a signed-out user's pet and stats.
     static func clear() {
         defaults.removeObject(forKey: key)
     }
-
+ 
     /// Call from the main app after feeding, so widgets/Live Activity refresh.
     static func markFed() {
         var value = load()
